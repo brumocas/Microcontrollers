@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../OneDrive - Universidade do Porto/Professional Life/Code/AI/microcontrollers"
+		},
+		{
+			"name": "Blink_Esp32",
+			"path": "."
+		},
+		{
+			"name": "LAB0",
+			"path": "../LAB0"
+		}
+	],
+	"settings": {}
+}

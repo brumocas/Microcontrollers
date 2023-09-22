@@ -21,6 +21,7 @@ void loop() {
   // Turn the LED on (HIGH)
   digitalWrite(ledPin_Red, HIGH); 
   digitalWrite(ledPin_Green, HIGH);
+  Serial.println("Led on");
 
   }
   else
@@ -29,6 +30,7 @@ void loop() {
   // Turn the LED off (LOW)
   digitalWrite(ledPin_Red, LOW); 
   digitalWrite(ledPin_Green, LOW);
+  Serial.println("Led off");
 
   }
   

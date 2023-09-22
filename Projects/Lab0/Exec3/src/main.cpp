@@ -65,7 +65,7 @@ void loop()
       if (b == '+') blink_period = 80 * blink_period / 100;  // Press '+' to increase the frequency
     }  
     // To measure the time between loop() calls
-    //unsigned long last_loop_micros = loop_micros; 
+    unsigned long last_loop_micros = loop_micros; 
     
     // Do this only every "interval" miliseconds 
     // It helps to clear the switches bounce effect
@@ -101,11 +101,11 @@ void loop()
       }
 
       // Calculate next state for the second state machine
-      /*if (fsm2.state == 0 && S2 && !prevS2){
+      if (fsm2.state == 0 && S2 && !prevS2){
         fsm2.new_state = 1;
       } else if (fsm2.state == 1 && S2 && !prevS2){
         fsm2.new_state = 0;
-      }*/
+      }
 
       // Update the states
       set_state(fsm1, fsm1.new_state);
@@ -121,11 +121,12 @@ void loop()
       }
 
       // A more compact way
-      // LED_1 = (fsm1.state == 1);
-      // LED_1 = (state == 1)||(state ==2);  if LED1 must be set in states 1 and 2
+       LED_1 = (fsm1.state == 1);
+       
+      //LED_1 = (state == 1)||(state ==2); // if LED1 must be set in states 1 and 2
       
       // Actions set by the current state of the second state machine
-      // LED_2 = (fsm2.state == 0);
+       LED_2 = (fsm2.state == 0);
 
       // Set the outputs
       digitalWrite(LED1_pin, LED_1);

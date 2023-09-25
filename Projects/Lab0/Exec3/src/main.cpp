@@ -121,12 +121,11 @@ void loop()
       }
 
       // A more compact way
-       LED_1 = (fsm1.state == 1);
-       
-      //LED_1 = (state == 1)||(state ==2); // if LED1 must be set in states 1 and 2
+      // LED_1 = (fsm1.state == 1);
+      // LED_1 = (state == 1)||(state ==2); // if LED1 must be set in states 1 and 2
       
       // Actions set by the current state of the second state machine
-       LED_2 = (fsm2.state == 0);
+      LED_2 = (fsm2.state == 0);
 
       // Set the outputs
       digitalWrite(LED1_pin, LED_1);

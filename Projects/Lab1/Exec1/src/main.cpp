@@ -1,10 +1,14 @@
 #include <Arduino.h>
 
-#define LED1_pin 6
-#define LED2_pin 7
-#define LED3_pin 8
-#define LED4_pin 9
-#define LED5_pin 10
+#define MAXIMUM_NUM_NEOPIXELS 5
+#include <NeoPixelConnect.h>
+
+#define LED_PIN 22
+
+// Create an instance of NeoPixelConnect and initialize it
+// to use GPIO pin 22 as the control pin, for a string
+// of 8 neopixels. Name the instance p
+NeoPixelConnect strip(LED_PIN, MAXIMUM_NUM_NEOPIXELS, pio0, 0);
 
 #define S1_pin 2
 #define S2_pin 3
@@ -18,20 +22,30 @@ typedef struct {
   unsigned long tes, tis;
 } fsm_t;
 
+typedef struct {
+  // RGB struct
+  unsigned int led_state, R,G,B;
+} led_RGB;
+
 // Input variables
 uint8_t S1, prevS1;
 uint8_t S2, prevS2;
 uint8_t S3, prevS3;
 
 // Output variables
-uint8_t LED_1, LED_2, LED_3, LED_4, LED_5;
+led_RGB led1, led2, led3, led4, led5;
+uint8_t LED_1,LED_2,LED_3,LED_4,LED_5;
 
 // Our finite state machines
 fsm_t fsm1, fsm2, fsm3;
 
+unsigned long aux,aux_default;
+
+
+
 unsigned long interval, last_cycle;
 unsigned long loop_micros;
-uint16_t default_time, blink_time, aux;
+uint16_t default_time, blink_time;
 
 // Set new state
 void set_state(fsm_t& fsm, int new_state)
@@ -43,15 +57,59 @@ void set_state(fsm_t& fsm, int new_state)
   }
 }
 
+// Set individual led state
+void set_led( led_RGB& led, int led_state, int red, int green, int blue){
+  led.led_state = led_state;
+  led.R = red;
+  led.G = green;
+  led.B = blue;
+}
+
+// Lit led strip
+ void set_led_strip(led_RGB led1, led_RGB led2, led_RGB led3, led_RGB led4, led_RGB led5){
+       
+    if (led1.led_state)
+    {
+      strip.neoPixelSetValue(0, led1.R, led1.G, led1.B);
+    } else{
+      strip.neoPixelSetValue(0, 0, 0, 0);
+    }
+
+    if (led2.led_state)
+    {
+      strip.neoPixelSetValue(1, led2.R, led2.G, led2.B);
+    } else{
+      strip.neoPixelSetValue(1, 0, 0, 0);
+    }
+
+    if (led3.led_state)
+    {
+      strip.neoPixelSetValue(2, led3.R, led3.G, led3.B);
+    } else{
+      strip.neoPixelSetValue(2, 0, 0, 0);
+    }
+
+    if (led4.led_state)
+    {
+      strip.neoPixelSetValue(3, led4.R, led4.G, led4.B);
+    } else{
+      strip.neoPixelSetValue(3, 0, 0, 0);
+    }
+
+    if (led5.led_state)
+    {
+      strip.neoPixelSetValue(4, led5.R, led5.G, led5.B);
+    } else{
+      strip.neoPixelSetValue(4, 0, 0, 0);
+    }
+    strip.neoPixelShow();
+
+ }
+
 
 void setup() 
 {
-  pinMode(LED1_pin, OUTPUT);
-  pinMode(LED2_pin, OUTPUT);
-  pinMode(LED3_pin, OUTPUT);
-  pinMode(LED4_pin, OUTPUT);
-  pinMode(LED5_pin, OUTPUT);
-
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(S1_pin, INPUT_PULLUP);
   pinMode(S2_pin, INPUT_PULLUP);
   pinMode(S3_pin, INPUT_PULLUP);
@@ -71,7 +129,7 @@ void setup()
 }
 
 void loop() 
-{
+{ 
     uint8_t b;
     if (Serial.available()) {  // Only do this if there is serial data to be read
       b = Serial.read();       
@@ -83,7 +141,7 @@ void loop()
     
     // Do this only every "interval" miliseconds 
     // It helps to clear the switches bounce effect
-    unsigned long now = millis();
+    const unsigned long now = millis();
     if (now - last_cycle > interval) {
       loop_micros = micros();
       last_cycle = now;
@@ -104,15 +162,13 @@ void loop()
       fsm2.tis = cur_time - fsm2.tes;
       fsm3.tis = cur_time - fsm3.tes;
 
-
       // Calculate next state for the first state machine
       if (fsm1.state == 0 && S1 && !prevS1){
         fsm1.new_state = 1;
-        aux = fsm2.tis;
       } else if (fsm1.state == 1 && S1 && !prevS1){
         fsm1.new_state = 0;
-        fsm2.tes = millis() - aux;
       }
+
 
       // Calculate next state for the second state machine
       if (fsm2.state == 0 && fsm1.state == 1){
@@ -162,14 +218,16 @@ void loop()
       // Actions set by the current state of the third state machine
       // No actions here
 
-      // Set the outputs
-      digitalWrite(LED1_pin, LED_1);
-      digitalWrite(LED2_pin, LED_2);
-      digitalWrite(LED3_pin, LED_3);
-      digitalWrite(LED4_pin, LED_4);
-      digitalWrite(LED5_pin, LED_5);
-      digitalWrite(LED3_pin, LED_3);
+      // Set led
+      set_led(led1, LED_1, 30, 200, 0);
+      set_led(led2, LED_2, 30, 200, 0);
+      set_led(led3, LED_3, 30, 200, 0);
+      set_led(led4, LED_4, 30, 200, 0);
+      set_led(led5, LED_5, 30, 200, 0);
 
+      // Set the outputs
+      set_led_strip(led1, led2, led3, led4, led5);
+      
       // Debug using the serial port
       Serial.print("Sdown: ");
       Serial.print(S1);
@@ -190,19 +248,19 @@ void loop()
       Serial.print(fsm3.state);
 
       Serial.print(" LED_1: ");
-      Serial.print(LED_1);
+      Serial.print(led1.led_state);
 
       Serial.print(" LED_2: ");
-      Serial.print(LED_2);
+      Serial.print(led2.led_state);
 
       Serial.print(" LED_3: ");
-      Serial.print(LED_3);
+      Serial.print(led3.led_state);
 
       Serial.print(" LED_4: ");
-      Serial.print(LED_4);
+      Serial.print(led4.led_state);
 
       Serial.print(" LED_5: ");
-      Serial.print(LED_5);
+      Serial.print(led5.led_state);
 
       Serial.print(" default_time: ");
       Serial.print(default_time);
@@ -210,8 +268,12 @@ void loop()
       Serial.print(" blink_time: ");
       Serial.print(blink_time);
 
+      
       Serial.print(" fsm2.tis: ");
       Serial.print(fsm2.tis);
+
+      Serial.print(" fsm1.tes: ");
+      Serial.print(fsm1.tes);
 
       Serial.print(" aux: ");
       Serial.print(aux);

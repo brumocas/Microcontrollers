@@ -3,7 +3,7 @@
 #define MAXIMUM_NUM_NEOPIXELS 5
 #include <NeoPixelConnect.h>
 
-#define LED_PIN 22
+#define LED_PIN 6
 
 // Create an instance of NeoPixelConnect and initialize it
 // to use GPIO pin 22 as the control pin, for a string

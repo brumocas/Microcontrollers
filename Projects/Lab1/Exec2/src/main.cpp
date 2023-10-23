@@ -37,14 +37,15 @@ led_RGB led1, led2, led3, led4, led5;
 uint8_t LED_1,LED_2,LED_3,LED_4,LED_5;
 
 // Our finite state machines
-fsm_t fsm1, fsm2, fsm3;
+fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6;
 
 int countLeds ;
 
 unsigned long interval, last_cycle;
 unsigned long loop_micros;
 uint16_t default_time, blink_time, aux;
-bool configuration_mode, blink_mode ;
+int configuration_mode;
+bool blink_mode ;
 
 // Set new state
 void set_state(fsm_t& fsm, int new_state)
@@ -133,7 +134,7 @@ void setup()
   default_time = 2000; 
   blink_time = 500;
   aux = 0;
-  configuration_mode = false;
+  configuration_mode = 0;
   blink_mode = false;
 
   // Set leds to light blue
@@ -144,10 +145,13 @@ void setup()
   set_led(led5, -1, 00, 100, 100);
 
   interval = 40;
-  set_state(fsm1, 0);
-  set_state(fsm2, 0);
+  set_state(fsm1,0);
+  set_state(fsm2,0);
   countLeds = 5;
-  set_state(fsm3, 0);
+  set_state(fsm3,0);
+  set_state(fsm4,0);
+  set_state(fsm5,0);
+  set_state(fsm6,0);
 }
 
 void loop() 
@@ -183,6 +187,9 @@ void loop()
       fsm1.tis = cur_time - fsm1.tes;
       fsm2.tis = cur_time - fsm2.tes;
       fsm3.tis = cur_time - fsm3.tes;
+      fsm4.tis = cur_time - fsm4.tes;
+      fsm5.tis = cur_time - fsm5.tes;
+      fsm6.tis = cur_time - fsm6.tes;
 
       // Calculate next state for the first state machine
       if (fsm1.state == 0 && S1 && !prevS1){
@@ -217,7 +224,7 @@ void loop()
         fsm2.new_state = 0;
         countLeds = 5;
         blink_mode = false;
-        // Set leds to light blue
+        // Set leds to light blue 
         set_led(led1, -1, 00, 100, 100);
         set_led(led2, -1, 00, 100, 100);
         set_led(led3, -1, 00, 100, 100);
@@ -226,38 +233,85 @@ void loop()
       }
 
       // Calculate next state for the third state machine
-      if (fsm3.state == 0 && S2 && !prevS2){
+      if (fsm3.state == 0 && S2 && !prevS2 ){
         fsm3.new_state = 0;
         if(countLeds < 5 && !blink_mode){
         countLeds++;
         }
-      } else if(fsm3.state = 0 && S2 && fsm3.tis > 3000){
-        fsm3.new_state = 1;
-        configuration_mode = true;
-        fsm3.tes = cur_time;
-      } else if(fsm3.state = 1 && S2 && fsm3.tis > 3000 ){
-        configuration_mode = false;
-        fsm3.new_state = 0;
+      } 
+
+      // Calculate new state for the fourth machine state
+      if (fsm4.state == 0 && S2 ){
+        fsm4.new_state = 1;
+      } else if(fsm4.state == 1 && fsm4.tis > 3000 && S2){
+        fsm4.new_state = 2;
+        configuration_mode = 1;
+      } else if (fsm4.state == 2 && S2 && !prevS2){
+        fsm4.new_state = 3;
+        configuration_mode = 2;
+      } else if (fsm4.state == 3 && S2 && !prevS2){
+        fsm4.new_state = 4;
+        configuration_mode = 3;
+      } else if ((fsm4.state == 2 || fsm4.state == 3 || fsm4.state == 4) && fsm4.tis > 3000 && S2){
+        fsm4.new_state = 0;
+        configuration_mode = 0;
+      } else if(!prevS2){
+        fsm4.tes = cur_time;
+      }
+
+      //Calculate new state for the fifth machine state
+      if (fsm5.state == 0 && configuration_mode == 1){
+          fsm5.new_state = 1;
+      } else if(fsm5.state == 1 && S1 && prevS1){
+        fsm5.new_state = 2;
+        default_time = 1000;
+      } else if(fsm5.state == 2 && S1 && prevS1){
+        fsm5.new_state = 3;
+        default_time = 2000;
+      } else if(fsm5.state == 3 && S1 && prevS1){
+        fsm5.new_state = 4;
+        default_time = 5000;
+      } else if(fsm5.state == 4 && S1 && prevS1){
+        fsm5.new_state = 5;
+        default_time = 10000;
+      } else if(fsm5.state == 5 && S1 && prevS1){
+        fsm5.new_state = 1;
+      } else if ((fsm5.state == 1 || fsm5.state == 2 || fsm5.state == 3 || fsm5.state == 4 || fsm5.state == 5) && configuration_mode == 0){ 
+        fsm5.new_state = 0;
+      }
+
+      if (fsm6.state == 0 && configuration_mode == 1){
+        fsm6.new_state = 1;
+      } else if(fsm6.state == 1 && fsm6.tis > default_time){
+        fsm6.new_state = 2;
+      } else if(fsm6.state == 2 && fsm6.tis > default_time){
+        fsm6.new_state = 1;
+      } else if((fsm6.state == 1 || fsm6.state == 2) && configuration_mode != 1){
+        fsm6.new_state = 0;  
       }
         
       // Update the states
       set_state(fsm1, fsm1.new_state);
       set_state(fsm2, fsm2.new_state);
       set_state(fsm3, fsm3.new_state);
+      set_state(fsm4, fsm4.new_state);
+      set_state(fsm5, fsm5.new_state);
+      set_state(fsm6, fsm6.new_state);
+
 
       // Actions set by the current state of the first state machine
-      // No actions here
+      // No actions herex
 
       // Actions set by the current state of the second state machine
-      LED_1 = (countLeds >= 1 && !configuration_mode) || (fsm2.state == 1);
-      LED_2 = (countLeds >= 2 && !configuration_mode) || (fsm2.state == 1);
-      LED_3 = (countLeds >= 3 && !configuration_mode) || (fsm2.state == 1);
-      LED_4 = (countLeds >= 4 && !configuration_mode) || (fsm2.state == 1);
-      LED_5 = (countLeds >= 5 && !configuration_mode) || (fsm2.state == 1);
+      LED_1 = (countLeds >= 1 && !configuration_mode) || (fsm2.state == 1 && !configuration_mode) || (fsm6.state == 1);
+      LED_2 = (countLeds >= 2 && !configuration_mode) || (fsm2.state == 1 && !configuration_mode);
+      LED_3 = (countLeds >= 3 && !configuration_mode) || (fsm2.state == 1 && !configuration_mode);
+      LED_4 = (countLeds >= 4 && !configuration_mode) || (fsm2.state == 1 && !configuration_mode);
+      LED_5 = (countLeds >= 5 && !configuration_mode) || (fsm2.state == 1 && !configuration_mode);
 
       // Actions set by the current state of the third state machine
       // No actions here
-
+      
       // Set led
       set_led(led1, LED_1, -1, -1, -1);
       set_led(led2, LED_2, -1, -1, -1);
@@ -287,6 +341,9 @@ void loop()
       Serial.print(" RTSM: ");
       Serial.print(fsm3.state);
 
+      Serial.print(" CMST: ");
+      Serial.print(fsm4.state);
+
       Serial.print(" LED_1: ");
       Serial.print(led1.led_state);
 
@@ -305,9 +362,11 @@ void loop()
       Serial.print(" counteLeds: ");
       Serial.print(countLeds);
 
+      
       Serial.print(" default_time: ");
       Serial.print(default_time);
 
+      /*
       Serial.print(" blink_time: ");
       Serial.print(blink_time);
       
@@ -319,6 +378,14 @@ void loop()
 
       Serial.print(" aux: ");
       Serial.print(aux);
+    */
+
+      Serial.print(" fsm6.state: ");
+      Serial.print(fsm6.state);
+
+
+      Serial.print(" configuration mode: ");
+      Serial.print(configuration_mode);
 
 
       /*

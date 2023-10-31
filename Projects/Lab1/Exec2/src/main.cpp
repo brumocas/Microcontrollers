@@ -47,7 +47,6 @@ enum MODE {
     NORMAL,
     BLINK,
     FADE,
-    IDLE
 };
 MODE led_mode;
 
@@ -71,9 +70,9 @@ unsigned long interval, last_cycle, loop_micros, default_time, blink_time, aux, 
 //  leds_counts --> indicates number of lit LEDs
 // step --> indicates the number of subtractions when the FADE mode is on
 // blink_mode --> indicates if we are in the RED blink mode
-uint8_t configuration_mode, leds_count;
+uint8_t configuration_mode, leds_count, pos;
 float step;
-bool blink_mode ;
+bool blink_mode, idle_mode, up;
 
 // Set new state
 void set_state(fsm_t& fsm, int new_state)
@@ -239,6 +238,8 @@ void setup()
   pinMode(S2_pin, INPUT_PULLUP);
   pinMode(S3_pin, INPUT_PULLUP);
 
+  randomSeed(analogRead(0)); // Initialize the random number generator with a seed (optional)
+
   // Start the serial port with 115200 baudrate
   Serial.begin(115200);
 
@@ -254,6 +255,10 @@ void setup()
   configuration_mode = 0;
   // variable to save if we are in LED BLINK RED mode
   blink_mode = false;
+  // variable to save if we are in LED IDLE mode
+  idle_mode = false;
+  // For idle mode
+  pos = 0;
 
   // Starting LED mode
   led_mode = FADE;
@@ -321,6 +326,7 @@ void loop()
       fsm14.tis = cur_time - fsm14.tes;
 
       // Calculate next state for the CONTROL STATE MACHINE (CSM)
+
       if ((fsm1.state == 0 && S1 && !prevS1)){
         fsm1.new_state = 1;
         fsm2.tes = cur_time - aux;
@@ -361,17 +367,52 @@ void loop()
       } else if (fsm2.state == 0 && fsm2.tis > default_time && fsm1.state == 1 && leds_count == 0){ 
         fsm2.new_state = 1;
         blink_mode = true;
+        blink_aux = cur_time;
       } else if (fsm2.state == 1 && fsm2.tis > blink_time && fsm1.state == 1 ){ 
         fsm2.new_state = 2;
       } else if (fsm2.state == 2 && fsm2.tis > blink_time && fsm1.state == 1 ){ 
         fsm2.new_state = 1;
-      } else if ((fsm2.state == 2 || fsm2.state == 1 || fsm2.state == 0|| fsm2.state == 3 || fsm2.state == 4) && ((S3 && !prevS3) || fsm1.state == 2)){
+      } else if ((fsm2.state == 2 || fsm2.state == 1 || fsm2.state == 0|| fsm2.state == 3 || fsm2.state == 4 ) && ((S3 && !prevS3) || fsm1.state == 2)){
         fsm2.new_state = 0;
         leds_count = 6;
         blink_mode = false;
+        idle_mode = false;
         if(configuration_mode == 0)
         set_led_strip_color(led1, led2, led3, led4, led5, led_color);
-      } else if ()
+      } else if ((fsm2.state == 1 || fsm2.state == 2 ) && cur_time - blink_aux > 5000 && fsm1.state == 1){
+        fsm2.new_state = 5;
+        blink_mode = false;
+        idle_mode = true;
+        up = true;
+        pos = 0;
+        leds_count = 0;
+        blink_aux = 0;
+      } else if (fsm2.state == 5 && fsm2.tis > 500 ){
+        fsm2.new_state = 6;
+        if(up == true){
+          leds_count++;
+          if (leds_count >= 5)
+          up = false;
+        } else{
+          leds_count--;
+          if (leds_count <= 0){
+            up = true;
+            pos = pos + 1;
+          }
+        }
+        if (pos == 6)
+        pos = 0;
+
+      } else if (fsm2.state == 6 && fsm2.tis > 500 ){
+        fsm2.new_state = 5;
+      }else if ((fsm2.state == 5 || fsm2.state == 6 ) && ((S3 && !prevS3) || (S2 && !prevS2) || (S1 && !prevS1) || fsm1.state == 2)){
+        fsm2.new_state = 0;
+        idle_mode = false;
+        blink_aux = 0;
+        leds_count = 6;
+        if(configuration_mode == 0)
+        set_led_strip_color(led1, led2, led3, led4, led5, led_color);
+      }
       
       // Calculate next state for the INCREASE LED STATE MACHINE (ILSTM)
       if (fsm3.state == 0 && S2 && !prevS2 ){
@@ -601,6 +642,11 @@ void loop()
       } else if (blink_mode){
         // set LEDs to RED in blink mode
         set_led_strip_color(led1, led2, led3, led4, led5, RED_led);
+      }  else if (idle_mode){
+        // set LEDs with random color in idle mode
+
+        set_led_strip_color(led1, led2, led3, led4, led5, (Color)pos);
+
       } else{
         // Manage LED normal mode
         if(led_mode == FADE && fsm1.state == 1){
@@ -672,6 +718,10 @@ void loop()
       Serial.print(" configuration mode: ");
       Serial.print(configuration_mode);
 
+      Serial.print(" ledscoutn: ");
+      Serial.print(leds_count);
+
+    
       Serial.println();
       
     }

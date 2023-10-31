@@ -61,7 +61,7 @@ uint8_t LED_1,LED_2,LED_3,LED_4,LED_5;
 // Our finite state machines
 fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6, fsm7, fsm8, fsm9, fsm10, fsm11, fsm12, fsm13, fsm14;
 
-unsigned long interval, last_cycle, loop_micros, aux, blink_aux, default_time, blink_time;
+unsigned long interval, last_cycle, loop_micros, aux, blink_aux, default_time, blink_time, idle_aux;
 
 uint configuration_mode, countLeds, step = 0, working_led;
 bool blink_mode ;

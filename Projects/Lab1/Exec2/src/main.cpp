@@ -59,11 +59,11 @@ led_RGB led1, led2, led3, led4, led5;
 uint8_t LED_1,LED_2,LED_3,LED_4,LED_5;
 
 // Our finite state machines
-fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6, fsm7, fsm8, fsm9, fsm10, fsm11, fsm12, fsm13;
+fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6, fsm7, fsm8, fsm9, fsm10, fsm11, fsm12, fsm13, fsm14;
 
 unsigned long interval, last_cycle, loop_micros, aux, blink_aux, default_time, blink_time;
 
-uint configuration_mode, countLeds, step = 0;
+uint configuration_mode, countLeds, step = 0, working_led;
 bool blink_mode ;
 
 // Set new state
@@ -137,11 +137,11 @@ void set_led_strip_color(led_RGB& led1, led_RGB& led2, led_RGB& led3, led_RGB& l
             set_led(led5, -1, 255, 255, 0);
             break;
         case ORANGE_led:
-            set_led(led1, -1, 255, 40, 0);
-            set_led(led2, -1, 255, 40, 0);
-            set_led(led3, -1, 255, 40, 0);
-            set_led(led4, -1, 255, 40, 0);
-            set_led(led5, -1, 255, 40, 0);
+            set_led(led1, -1, 255, 65, 0);
+            set_led(led2, -1, 255, 65, 0);
+            set_led(led3, -1, 255, 65, 0);
+            set_led(led4, -1, 255, 65, 0);
+            set_led(led5, -1, 255, 65, 0);
             break;
         case WHITE_led:
             set_led(led1, -1, 255, 255, 255);
@@ -212,6 +212,17 @@ void setFade(led_RGB& led){
   led.BF = led.B;
 }
 
+// Save color first values for every leds
+void setAllFade(led_RGB& led1, led_RGB& led2, led_RGB& led3, led_RGB& led4, led_RGB& led5){
+  
+  setFade(led1);
+  setFade(led2);
+  setFade(led3);
+  setFade(led4);
+  setFade(led5);
+}
+
+
 void setup() 
 {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -230,8 +241,8 @@ void setup()
 
   configuration_mode = 0;
   blink_mode = false;
-  led_mode = NORMAL;
-  led_color = ORANGE_led;
+  led_mode = FADE;
+  led_color = WHITE_led;
 
   // Set leds to led_color 
   set_led_strip_color(led1, led2, led3, led4, led5, led_color);
@@ -239,7 +250,7 @@ void setup()
   interval = 40;
   set_state(fsm1,0);
   set_state(fsm2,0);
-  countLeds = 5;
+  countLeds = 6;
   set_state(fsm3,0);
   set_state(fsm4,0);
   set_state(fsm5,0);
@@ -251,6 +262,7 @@ void setup()
   set_state(fsm11,0);
   set_state(fsm12,0);
   set_state(fsm13,0);
+  set_state(fsm14,0);
 }
 
 void loop() 
@@ -296,6 +308,7 @@ void loop()
       fsm11.tis = cur_time - fsm11.tes;
       fsm12.tis = cur_time - fsm12.tes;
       fsm13.tis = cur_time - fsm13.tes;
+      fsm14.tis = cur_time - fsm14.tes;
 
       // Calculate next state for the first state machine
       if ((fsm1.state == 0 && S1 && !prevS1)){
@@ -310,11 +323,29 @@ void loop()
       } else if (fsm1.state == 2 && configuration_mode == 0){
         fsm1.new_state = 0;
       }
-      
 
       // Calculate next state for the second state machine
       if (fsm2.state == 0 && fsm1.state == 1 && fsm2.tis > default_time && countLeds != 0){        
         fsm2.tes = cur_time;
+        fsm2.new_state = 0;
+        countLeds--;
+
+        if(led_mode == FADE){
+          set_led_strip_color(led1, led2, led3, led4, led5, led_color);
+          setAllFade(led1, led2, led3, led4, led5);
+        }
+
+      } else if (fsm2.state == 0 && fsm2.tis > default_time/2 && fsm1.state == 1 && countLeds != 0 && led_mode == BLINK){ 
+        fsm2.new_state = 3;
+        blink_aux = cur_time;
+        countLeds--;
+      } else if (fsm2.state == 3 && fsm2.tis > 50 && fsm1.state == 1 ){ 
+        fsm2.new_state = 4;
+        countLeds++;
+      } else if (fsm2.state == 4 && fsm2.tis > 50 && fsm1.state == 1 ){ 
+        fsm2.new_state = 3;
+        countLeds--;
+      } else if (fsm2.state == 4 && cur_time - blink_aux > default_time/2 && fsm1.state == 1 ){ 
         fsm2.new_state = 0;
         countLeds--;
       } else if (fsm2.state == 0 && fsm2.tis > default_time && fsm1.state == 1 && countLeds == 0){ 
@@ -324,16 +355,20 @@ void loop()
         fsm2.new_state = 2;
       } else if (fsm2.state == 2 && fsm2.tis > blink_time && fsm1.state == 1 ){ 
         fsm2.new_state = 1;
-      } else if ((fsm2.state == 2 || fsm2.state == 1 || fsm2.state == 0) && S3 && !prevS3){
+      } else if ((fsm2.state == 2 || fsm2.state == 1 || fsm2.state == 0|| fsm2.state == 3 || fsm2.state == 4) && ((S3 && !prevS3) || fsm1.state == 2)){
         fsm2.new_state = 0;
-        countLeds = 5;
+        countLeds = 6;
         blink_mode = false;
+        if(configuration_mode == 0)
+        {
+          set_led_strip_color(led1, led2, led3, led4, led5, led_color);
+        }
       }
-
+      
       // Calculate next state for the third state machine
       if (fsm3.state == 0 && S2 && !prevS2 ){
         fsm3.new_state = 0;
-        if(countLeds < 5 && !blink_mode && !configuration_mode){
+        if(countLeds < 6 && !blink_mode && !configuration_mode){
         countLeds++;
         }
       } 
@@ -353,8 +388,10 @@ void loop()
       } else if ((fsm4.state == 2 || fsm4.state == 3 || fsm4.state == 4) && fsm4.tis > 3000 && S2){
         fsm4.new_state = 0;
         configuration_mode = 0;
+        set_led_strip_color(led1, led2, led3, led4, led5, led_color);
       } else if(!prevS2){
         fsm4.tes = cur_time;
+        
       }
 
       //Calculate new state for the Configuration Mode 1 (CM1SM) state machine
@@ -528,6 +565,7 @@ void loop()
       set_state(fsm11, fsm11.new_state);
       set_state(fsm12, fsm12.new_state);
       set_state(fsm13, fsm13.new_state);
+      set_state(fsm14, fsm14.new_state);
 
       // Actions set by the current state of the second state machine
       LED_1 = ((countLeds >= 1 || fsm2.state == 1) && !configuration_mode) || (fsm6.state == 1);
@@ -535,7 +573,8 @@ void loop()
       LED_3 = ((countLeds >= 3 || fsm2.state == 1) && !configuration_mode) || (fsm12.state == 1);
       LED_4 = ((countLeds >= 4 || fsm2.state == 1) && !configuration_mode);
       LED_5 = ((countLeds >= 5 || fsm2.state == 1) && !configuration_mode) || (fsm7.state == 1) || (fsm13.state == 1) || (fsm10.state == 3) || (fsm10.state == 5) || (fsm10.state == 4) || (fsm10.state == 8);
-      
+
+  
       // Set leds logical values
       set_led(led1, LED_1, -1, -1, -1);
       set_led(led2, LED_2, -1, -1, -1);
@@ -548,29 +587,42 @@ void loop()
         // Manage led in configuration mode
         if (configuration_mode == 2 && led_mode == FADE){
           step = (default_time/interval);
-          step = step + 1;
-          set_led(led5, -1, led5.R - (led5.RF/step), led5.G - (led5.GF/step), led5.B - (led5.BF/step));                                                                                               
+          set_led(led5, -1, led5.R - round((float(led5.RF)/(float)step)), led5.G - round((float(led5.GF)/(float)step)), led5.B - round((float(led5.BF)/(float)step)));                                                                                               
           set_led(led2, -1, 255, 0, 0);              
         } else{
-        set_led_strip_color(led1, led2, led3, led4, led5, led_color);
-        // set leds to 1, 2 and 3 to RED for better understanding
-        set_led(led1, -1, 255, 0, 0);
-        set_led(led2, -1, 255, 0, 0);
-        set_led(led3, -1, 255, 0, 0);
+          set_led_strip_color(led1, led2, led3, led4, led5, led_color);
+          // set leds to 1, 2 and 3 to RED for better understanding
+          set_led(led1, -1, 255, 0, 0);
+          set_led(led2, -1, 255, 0, 0);
+          set_led(led3, -1, 255, 0, 0);
         }
-        
+
       } else if (blink_mode){
         // Manage led in blink mode
         set_led_strip_color(led1, led2, led3, led4, led5, RED_led);
       } else{
         // Manage led normal mode
-        if(led_mode == FADE){
+        if(led_mode == FADE && fsm1.state == 1){
+        step = (default_time/interval);
+        if(countLeds == 1)
+          set_led(led1, -1, led1.R - round((float(led1.RF)/(float)step)), led1.G - round((float(led1.GF)/(float)step)), led1.B - round((float(led1.BF)/(float)step)));       
+        if(countLeds == 2)
+          set_led(led2, -1, led2.R - round((float(led2.RF)/(float)step)), led2.G - round((float(led2.GF)/(float)step)), led2.B - round((float(led2.BF)/(float)step)));   
+        if(countLeds == 3)    
+          set_led(led3, -1, led3.R - round((float(led3.RF)/(float)step)), led3.G - round((float(led3.GF)/(float)step)), led3.B - round((float(led3.BF)/(float)step)));      
+        if(countLeds == 4)
+          set_led(led4, -1, led4.R - round((float(led4.RF)/(float)step)), led4.G - round((float(led4.GF)/(float)step)), led4.B - round((float(led4.BF)/(float)step)));       
+        if(countLeds == 5)
+          set_led(led5, -1, led5.R - round((float(led5.RF)/(float)step)), led5.G - round((float(led5.GF)/(float)step)), led5.B - round((float(led5.BF)/(float)step)));      
+        }else if(led_mode == FADE){
+          // Do nothing
+        }else { 
+          set_led_strip_color(led1, led2, led3, led4, led5, led_color);         
+        } 
 
-
-        }
-        set_led_strip_color(led1, led2, led3, led4, led5, led_color);
       }
 
+      // lit led strip
       set_led_strip(led1, led2, led3, led4, led5);
       
       // Debug using the serial port

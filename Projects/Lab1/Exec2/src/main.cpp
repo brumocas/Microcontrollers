@@ -325,8 +325,7 @@ void loop()
       fsm13.tis = cur_time - fsm13.tes;
       fsm14.tis = cur_time - fsm14.tes;
 
-      // Calculate next state for the CONTROL STATE MACHINE (CSM)
-
+      // Calculate next state for the CONTROL STATE MACHINE (CSM)     
       if ((fsm1.state == 0 && S1 && !prevS1)){
         fsm1.new_state = 1;
         fsm2.tes = cur_time - aux;

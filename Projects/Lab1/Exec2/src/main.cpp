@@ -3,17 +3,18 @@
 #define MAXIMUM_NUM_NEOPIXELS 5
 #include <NeoPixelConnect.h>
 
+// Led Strip input pin
 #define LED_PIN 6
 
 NeoPixelConnect strip(LED_PIN, MAXIMUM_NUM_NEOPIXELS, pio0, 0);
 
-#define S1_pin 2
-#define S2_pin 3
-#define S3_pin 4
+// Input buttons pins
+#define S1_pin 2 // Sdown
+#define S2_pin 3 // Sup
+#define S3_pin 4 // Sgo
 
 typedef struct {
   int state, new_state;
-
   // tes - time entering state
   // tis - time in state
   unsigned long tes, tis;
@@ -29,7 +30,7 @@ typedef struct {
   float RF, GF, BF;
 } led_RGB;
 
-// Enum to the possible colors of the LED strip
+// Enum of the possible colors of the LED strip
 enum Color {
     VIOLET_led,
     BLUE_led,
@@ -42,10 +43,10 @@ enum Color {
 };
 Color led_color;
 
-// Enum to the possible LED modes
+// Enum of the possible LED modes
 enum MODE {
     NORMAL,
-    BLINK,
+    BLINK, 
     FADE,
 };
 MODE led_mode;
@@ -60,16 +61,16 @@ uint8_t S3, prevS3; //Sgo
 led_RGB led1, led2, led3, led4, led5;
 
 // Our finite state machines
-fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6, fsm7, fsm8, fsm9, fsm10, fsm11, fsm12, fsm13, fsm14;
-
+fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6, fsm7, fsm8, fsm9, fsm10, fsm11, fsm12, fsm13;
 // auxiliar time variables
 unsigned long interval, last_cycle, loop_micros, default_time, blink_time, aux, blink_aux, idle_aux;
 
 // auxiliar variables
 // congiguration_mode --> indicates the LED current mode
-//  leds_counts --> indicates number of lit LEDs
+// leds_counts --> indicates number of lit LEDs outside the configuration mode
 // step --> indicates the number of subtractions when the FADE mode is on
 // blink_mode --> indicates if we are in the RED blink mode
+// up --> used in idle mode to count up and down
 uint8_t configuration_mode, leds_count, pos;
 float step;
 bool blink_mode, idle_mode, up;
@@ -85,7 +86,7 @@ void set_state(fsm_t& fsm, int new_state)
 }
 
 // Function to set the LED RGB struct
-// When the parameter passed == -1 the LED is not changed
+// When the parameter passed == -1 the LED parameter is not changed
 void set_led( led_RGB& led, int led_state, float red, float green, float blue){
   // Set LED logical state
   if(led_state != -1){
@@ -145,11 +146,11 @@ void set_led_strip_color(led_RGB& led1, led_RGB& led2, led_RGB& led3, led_RGB& l
             set_led(led5, -1, 255, 255, 0);
             break;
         case ORANGE_led:
-            set_led(led1, -1, 255, 30, 0);
-            set_led(led2, -1, 255, 30, 0);
-            set_led(led3, -1, 255, 30, 0);
-            set_led(led4, -1, 255, 30, 0);
-            set_led(led5, -1, 255, 30, 0);
+            set_led(led1, -1, 255, 40, 0);
+            set_led(led2, -1, 255, 40, 0);
+            set_led(led3, -1, 255, 40, 0);
+            set_led(led4, -1, 255, 40, 0);
+            set_led(led5, -1, 255, 40, 0);
             break;
         case WHITE_led:
             set_led(led1, -1, 255, 255, 255);
@@ -175,41 +176,42 @@ void set_led_strip_color(led_RGB& led1, led_RGB& led2, led_RGB& led3, led_RGB& l
 // Funtion to lit the LED strip
  void set_led_strip(led_RGB& led1, led_RGB& led2, led_RGB& led3, led_RGB& led4, led_RGB& led5){
 
-    // Set led1   
+    // Set led1 output   
     if (led1.led_state)
     {
       strip.neoPixelSetValue(0, led1.R, led1.G, led1.B);
     } else{
       strip.neoPixelSetValue(0, 0, 0, 0);
     }
-    // Set led2 
+    // Set led2 output
     if (led2.led_state)
     {
       strip.neoPixelSetValue(1, led2.R, led2.G, led2.B);
     } else{
       strip.neoPixelSetValue(1, 0, 0, 0);
     }
-    // Set led3  
+    // Set led3 output
     if (led3.led_state)
     {
       strip.neoPixelSetValue(2, led3.R, led3.G, led3.B);
     } else{
       strip.neoPixelSetValue(2, 0, 0, 0);
     }
-    // Set led4 
+    // Set led4 output 
     if (led4.led_state)
     {
       strip.neoPixelSetValue(3, led4.R, led4.G, led4.B);
     } else{
       strip.neoPixelSetValue(3, 0, 0, 0);
     }
-    // Set led5 
+    // Set led5 output 
     if (led5.led_state)
     {
       strip.neoPixelSetValue(4, led5.R, led5.G, led5.B);
     } else{
       strip.neoPixelSetValue(4, 0, 0, 0);
     }
+    // Show the leds result
     strip.neoPixelShow();
 
  }
@@ -238,30 +240,30 @@ void setup()
   pinMode(S2_pin, INPUT_PULLUP);
   pinMode(S3_pin, INPUT_PULLUP);
 
-  randomSeed(analogRead(0)); // Initialize the random number generator with a seed (optional)
-
   // Start the serial port with 115200 baudrate
   Serial.begin(115200);
 
   // In ms
   default_time = 2000; 
-  // Blink in RED mode
+  // Blink time in RED mode
   blink_time = 500;
   // aux variable when in paused, used to save fsm2.tis
   aux = 0;
   // aux variable when in BLINK LED mode to check if fsm2.tis > default_time/2
   blink_aux = 0;
+  // aux variable to check idle mode
+  idle_aux = 0;
   // variable to save current LED mode, if configuration_mode == 0 ---> out of configuration mode
   configuration_mode = 0;
   // variable to save if we are in LED BLINK RED mode
   blink_mode = false;
   // variable to save if we are in LED IDLE mode
   idle_mode = false;
-  // For idle mode
+  // For idle mode to save the color enum position
   pos = 0;
 
   // Starting LED mode
-  led_mode = FADE;
+  led_mode = BLINK;
   // Starting LED color
   led_color = ORANGE_led;
   // Set leds to starting color 
@@ -270,7 +272,7 @@ void setup()
   interval = 40;
   set_state(fsm1,0);
   set_state(fsm2,0);
-  leds_count = 6;
+  leds_count = 5;
   set_state(fsm3,0);
   set_state(fsm4,0);
   set_state(fsm5,0);
@@ -282,7 +284,6 @@ void setup()
   set_state(fsm11,0);
   set_state(fsm12,0);
   set_state(fsm13,0);
-  set_state(fsm14,0);
 }
 
 void loop() 
@@ -323,12 +324,12 @@ void loop()
       fsm11.tis = cur_time - fsm11.tes;
       fsm12.tis = cur_time - fsm12.tes;
       fsm13.tis = cur_time - fsm13.tes;
-      fsm14.tis = cur_time - fsm14.tes;
 
       // Calculate next state for the CONTROL STATE MACHINE (CSM)     
       if ((fsm1.state == 0 && S1 && !prevS1)){
         fsm1.new_state = 1;
         fsm2.tes = cur_time - aux;
+        idle_aux = cur_time;
       } else if ((fsm1.state == 1 && S1 && !prevS1)){
         fsm1.new_state = 0;
         aux = fsm2.tis;
@@ -366,7 +367,7 @@ void loop()
       } else if (fsm2.state == 0 && fsm2.tis > default_time && fsm1.state == 1 && leds_count == 0){ 
         fsm2.new_state = 1;
         blink_mode = true;
-        blink_aux = cur_time;
+        idle_aux = cur_time;
       } else if (fsm2.state == 1 && fsm2.tis > blink_time && fsm1.state == 1 ){ 
         fsm2.new_state = 2;
       } else if (fsm2.state == 2 && fsm2.tis > blink_time && fsm1.state == 1 ){ 
@@ -378,14 +379,14 @@ void loop()
         idle_mode = false;
         if(configuration_mode == 0)
         set_led_strip_color(led1, led2, led3, led4, led5, led_color);
-      } else if ((fsm2.state == 1 || fsm2.state == 2 ) && cur_time - blink_aux > 5000 && fsm1.state == 1){
+      } else if ((fsm2.state == 1 || fsm2.state == 2 ) && cur_time - idle_aux > 10000 && fsm1.state == 1){
         fsm2.new_state = 5;
         blink_mode = false;
         idle_mode = true;
         up = true;
         pos = 0;
         leds_count = 0;
-        blink_aux = 0;
+        idle_aux = 0;
       } else if (fsm2.state == 5 && fsm2.tis > 500 ){
         fsm2.new_state = 6;
         if(up == true){
@@ -416,7 +417,7 @@ void loop()
       // Calculate next state for the INCREASE LED STATE MACHINE (ILSTM)
       if (fsm3.state == 0 && S2 && !prevS2 ){
         fsm3.new_state = 0;
-        if(leds_count < 6 && !blink_mode && !configuration_mode){
+        if(leds_count < 5 && !blink_mode && !configuration_mode){
         leds_count++;
         }
       } 
@@ -458,11 +459,11 @@ void loop()
       } else if(fsm5.state == 4 && S1 && !prevS1){
         fsm5.new_state = 1;
         default_time = 1000;
-      } else if ((fsm5.state == 1 || fsm5.state == 2 || fsm5.state == 3 || fsm5.state == 4 || fsm5.state == 5) && configuration_mode != 1){ 
+      } else if ((fsm5.state == 1 || fsm5.state == 2 || fsm5.state == 3 || fsm5.state == 4) && configuration_mode != 1){ 
         fsm5.new_state = 0;
       }
       
-      //Calculate new state for the CONFIGURATION MODE 1 STATE MACHINE LED 1 STATE MACHINE (CM1L1SM) 
+      //Calculate new state for the CONFIGURATION MODE 1 LED 1 STATE MACHINE (CM1L1SM) 
       if (fsm6.state == 0 && configuration_mode == 1){
         fsm6.new_state = 1;
       } else if(fsm6.state == 1 && fsm6.tis > 500){
@@ -613,7 +614,6 @@ void loop()
       set_state(fsm11, fsm11.new_state);
       set_state(fsm12, fsm12.new_state);
       set_state(fsm13, fsm13.new_state);
-      set_state(fsm14, fsm14.new_state);
 
       // Actions 
       led1.led_state = ((leds_count >= 1 || fsm2.state == 1) && !configuration_mode) || (fsm6.state == 1);
@@ -642,8 +642,7 @@ void loop()
         // set LEDs to RED in blink mode
         set_led_strip_color(led1, led2, led3, led4, led5, RED_led);
       }  else if (idle_mode){
-        // set LEDs with random color in idle mode
-
+        // set LEDs with the given enum color position
         set_led_strip_color(led1, led2, led3, led4, led5, (Color)pos);
 
       } else{
@@ -661,7 +660,7 @@ void loop()
         if(leds_count == 5)
           set_led(led5, -1, led5.R - (led5.RF/step), led5.G - (led5.GF/step), led5.B - (led5.BF/step));            
         }else if(led_mode == FADE){
-          // Hold fade mode when in pause
+          // Hold fade mode when in paused
         }else {
           // MORMAL mode or BLINK mode
           set_led_strip_color(led1, led2, led3, led4, led5, led_color);         
@@ -717,10 +716,17 @@ void loop()
       Serial.print(" configuration mode: ");
       Serial.print(configuration_mode);
 
-      Serial.print(" ledscoutn: ");
+      Serial.print(" ledscount: ");
       Serial.print(leds_count);
 
-    
+      Serial.print(" iDLE timer: ");
+      Serial.print(cur_time - idle_aux);
+
+      /*
+      Serial.print(" cur : ");
+      Serial.print(cur_time);
+      */
+
       Serial.println();
       
     }

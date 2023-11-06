@@ -73,7 +73,7 @@ unsigned long interval, last_cycle, loop_micros, default_time, blink_time, aux, 
 // up --> used in idle mode to count up and down
 uint8_t configuration_mode, leds_count, pos;
 float step;
-bool blink_mode, idle_mode, up;
+bool blink_mode, idle_mode, up, pause;
 
 // Set new state
 void set_state(fsm_t& fsm, int new_state)
@@ -111,11 +111,11 @@ void set_led( led_RGB& led, int led_state, float red, float green, float blue){
 void set_led_strip_color(led_RGB& led1, led_RGB& led2, led_RGB& led3, led_RGB& led4, led_RGB& led5, Color color){
   switch (color) {
         case VIOLET_led:
-            set_led(led1, -1, 100, 0, 100);
-            set_led(led2, -1, 100, 0, 100);
-            set_led(led3, -1, 100, 0, 100);
-            set_led(led4, -1, 100, 0, 100);
-            set_led(led5, -1, 100, 0, 100);
+            set_led(led1, -1, 100, 0, 150);
+            set_led(led2, -1, 100, 0, 150);
+            set_led(led3, -1, 100, 0, 150);
+            set_led(led4, -1, 100, 0, 150);
+            set_led(led5, -1, 100, 0, 150);
             break;
         case BLUE_led:
             set_led(led1, -1, 0, 0, 255);
@@ -261,9 +261,11 @@ void setup()
   idle_mode = false;
   // For idle mode to save the color enum position
   pos = 0;
+  // pause aux for blink when paused
+  pause = false;
 
   // Starting LED mode
-  led_mode = BLINK;
+  led_mode = NORMAL;
   // Starting LED color
   led_color = BLUE_led;
   // Set leds to starting color 
@@ -340,6 +342,16 @@ void loop()
         fsm1.new_state = 0;
       }
 
+      // For fast Blink when paused
+      if(fsm1.state == 0)
+      {
+        pause = !pause;
+      }
+      else{
+        pause = false;
+      }
+      
+
       // Calculate next state for the LED STATE MACHINE (LSM)
       if (fsm2.state == 0 && fsm1.state == 1 && fsm2.tis > default_time && leds_count != 0){        
         fsm2.tes = cur_time;
@@ -379,7 +391,7 @@ void loop()
         idle_mode = false;
         if(configuration_mode == 0)
         set_led_strip_color(led1, led2, led3, led4, led5, led_color);
-      } else if ((fsm2.state == 1 || fsm2.state == 2 ) && cur_time - idle_aux > 10000 && fsm1.state == 1){
+      } else if ((fsm2.state == 1 || fsm2.state == 2 ) && cur_time - idle_aux > 30000 && fsm1.state == 1){
         fsm2.new_state = 5;
         blink_mode = false;
         idle_mode = true;
@@ -400,7 +412,7 @@ void loop()
             pos = pos + 1;
           }
         }
-        if (pos == 6)
+        if (pos == 7)
         pos = 0;
 
       } else if (fsm2.state == 6 && fsm2.tis > 500 ){
@@ -616,11 +628,11 @@ void loop()
       set_state(fsm13, fsm13.new_state);
 
       // Actions 
-      led1.led_state = ((leds_count >= 1 || fsm2.state == 1) && !configuration_mode) || (fsm6.state == 1);
-      led2.led_state = ((leds_count >= 2 || fsm2.state == 1) && !configuration_mode) || (fsm9.state == 1);
-      led3.led_state = ((leds_count >= 3 || fsm2.state == 1) && !configuration_mode) || (fsm12.state == 1);
-      led4.led_state = ((leds_count >= 4 || fsm2.state == 1) && !configuration_mode);
-      led5.led_state = ((leds_count >= 5 || fsm2.state == 1) && !configuration_mode) || (fsm7.state == 1) || (fsm13.state == 1) || (fsm10.state == 3) || (fsm10.state == 5) || (fsm10.state == 4) || (fsm10.state == 8);
+      led1.led_state = (((leds_count >= 1 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm6.state == 1);
+      led2.led_state = (((leds_count >= 2 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm9.state == 1);
+      led3.led_state = (((leds_count >= 3 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm12.state == 1);
+      led4.led_state = (((leds_count >= 4 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode );
+      led5.led_state = (((leds_count >= 5 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm7.state == 1) || (fsm13.state == 1) || (fsm10.state == 3) || (fsm10.state == 5) || (fsm10.state == 4) || (fsm10.state == 8);
 
       // Set LED color values
       if (configuration_mode){
@@ -667,7 +679,7 @@ void loop()
         } 
       }
 
-      // lit LED strip
+      // lit LED strip  
       set_led_strip(led1, led2, led3, led4, led5);
       
       // Debug using the serial port

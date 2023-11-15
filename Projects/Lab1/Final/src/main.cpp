@@ -342,7 +342,7 @@ void loop()
         fsm1.new_state = 0;
       }
 
-      // For fast Blink when paused
+      // For fast Blink when paused, it blinks with the cycle rate
       if(fsm1.state == 0)
       {
         pause = !pause;
@@ -409,8 +409,8 @@ void loop()
           leds_count--;
           if (leds_count <= 0){
             up = true;
-            pos = pos + 1;
-          }
+            pos = pos + 1;  
+          } 
         }
         if (pos == 7)
         pos = 0;
@@ -632,7 +632,8 @@ void loop()
       led2.led_state = (((leds_count >= 2 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm9.state == 1);
       led3.led_state = (((leds_count >= 3 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm12.state == 1);
       led4.led_state = (((leds_count >= 4 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode );
-      led5.led_state = (((leds_count >= 5 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm7.state == 1) || (fsm13.state == 1) || (fsm10.state == 3) || (fsm10.state == 5) || (fsm10.state == 4) || (fsm10.state == 8);
+      led5.led_state = (((leds_count >= 5 || fsm2.state == 1) && (!pause || blink_mode)) && !configuration_mode ) || (fsm7.state == 1) || 
+        (fsm13.state == 1) || (fsm10.state == 3) || (fsm10.state == 5) || (fsm10.state == 4) || (fsm10.state == 8);
 
       // Set LED color values
       if (configuration_mode){

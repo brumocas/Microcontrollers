@@ -20,7 +20,7 @@ Adafruit_PWMServoDriver ServoDriver = Adafruit_PWMServoDriver();
 // you can also call it with a different address and I2C interface
 //Adafruit_PWMServoDriver ServoDriver = Adafruit_PWMServoDriver(0x40, Wire);
 
-#define NUM_SERVOS 16
+#define NUM_SERVOS 1
 
 int servo_pos[NUM_SERVOS];
 int servo_idx;

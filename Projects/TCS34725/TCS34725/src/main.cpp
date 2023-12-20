@@ -54,9 +54,8 @@ void setup()
   digitalWrite(25,HIGH);
                     
                    // Connect TCS34725 Vin to 3.3
-  Wire.setSDA(7);  // Connect TCS34725 SDA to gpio 10
-  Wire.setSCL(8);  // Connect TCS34725 SCL to gpio 11
-  pinMode(25, OUTPUT);
+  Wire.setSDA(8);  // Connect TCS34725 SDA to gpio 10
+  Wire.setSCL(9);  // Connect TCS34725 SCL to gpio 11
 
   Wire.begin();
   

@@ -5,14 +5,39 @@
 #include <SPI.h>
 #include <VL53L0X.h>
 
-VL53L0X tof;
-float distance, prev_distance;
+#define builtInLED 25
 
+/*------------------------------------------------Fsm-------------------------------------------*/
 unsigned long interval;
 unsigned long currentMicros, previousMicros;
 int loop_count;
 
-/* Initialise with specific int time and gain values */
+// State machine struct
+typedef struct {
+  int state, new_state;
+  // tes - time entering state
+  // tis - time in state
+  unsigned long tes, tis;
+} fsm_t;
+
+// Set new state
+void set_state(fsm_t& fsm, int new_state)
+{
+  if (fsm.state != new_state) {  // if the state changed tis is reset
+    fsm.state = new_state;
+    fsm.tes = millis();
+    fsm.tis = 0;
+  }
+}
+
+// Our finite state machines
+fsm_t fsm1;
+
+
+
+
+/*---------------------------------------Color Sensor-------------------------------------------*/
+// Initialise with specific int time and gain values
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_1X);
 
 // Global Variables for the color sensor
@@ -26,7 +51,6 @@ enum Color {
     INVALID
 };
 Color color;
-
 
 // tcs.getRawData() does a delay(Integration_Time) after the sensor readout.
 // We don't need to wait for the next integration cycle because we wait "interval" ms before requesting another read
@@ -56,6 +80,12 @@ Color getColorValue(){
 
 }
 
+
+
+/*---------------------------------------Time of Flight-------------------------------------------*/
+VL53L0X tof;
+float distance, prev_distance;
+
 // Get tof distance and prev_distance value in millimeters
 void tofGetValue(){
     if (tof.readRangeAvailable()) {
@@ -68,6 +98,11 @@ void tofGetValue(){
 }
 
 
+
+
+
+
+
 void setup() 
 { 
   // PCT can be edit here in microseconds
@@ -77,8 +112,8 @@ void setup()
   Serial.begin(115200);
 
   // Set built in Led for debug 
-  pinMode(25, OUTPUT);
-  digitalWrite(25, !digitalRead(25));
+  pinMode(builtInLED, OUTPUT);
+  digitalWrite(builtInLED, !digitalRead(25));
 
 
   // Connect TCS34725 Vin to 3.3
@@ -110,7 +145,10 @@ void setup()
 
   // Start new distance measure
   tof.startReadRangeMillimeters();  
-  
+
+
+  // Init fsms
+  set_state(fsm1, 0);
 }
 
 void loop() 
@@ -134,15 +172,70 @@ void loop()
     */
 
 
+    // Update tis for all state machines
+    unsigned long cur_time = currentMicros/1e3;   // Just one call to millis()
+    fsm1.tis = cur_time - fsm1.tes;
+
+    // FSM processing
+    if(fsm1.state == 0 && fsm1.tis >= 2000){
+      fsm1.new_state = 1;
+    } else if (fsm1.state == 1 && fsm1.tis >= 2000){
+      fsm1.new_state = 0;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Update the states
+    set_state(fsm1, fsm1.new_state);
+
+
+
 
     // Outputs
-    digitalWrite(25, !digitalRead(25));
+    //digitalWrite(25, !digitalRead(25));
+
+    if (fsm1.state == 0){
+      digitalWrite(builtInLED, HIGH);
+    } else if (fsm1.state == 1){
+      digitalWrite(builtInLED, LOW);
+    }
+
+
 
 
     // Prints for debug
+
+
+    // Distance value
     Serial.print(" Dist: ");
     Serial.print(distance, 3);
     Serial.print("  ");
+
+    // Color value
+    Serial.print(" Color: ");
+    Serial.print(color);
+    Serial.print("  ");
+
+
+    Serial.print(" Fsm1: ");
+    Serial.print(fsm1.state);
+    Serial.print("  ");
+
+    Serial.print(" Fsm1.tis: ");
+    Serial.print(fsm1.tis);
+    Serial.print("  ");
+    
 
     /*
     Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
@@ -152,10 +245,8 @@ void loop()
     Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
     Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
     */
-    Serial.print(" Color: ");
-    Serial.print(color);
-    Serial.print("  ");
-    Serial.println();
 
+        
+    Serial.println();
   }
 }

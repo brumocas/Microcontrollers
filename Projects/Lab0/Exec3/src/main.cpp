@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define LED1_pin 6
+#define LED1_pin 25
 #define LED2_pin 7
 
 #define S1_pin 2

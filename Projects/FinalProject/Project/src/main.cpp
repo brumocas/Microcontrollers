@@ -1,11 +1,20 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include "ServosInfo.h"
+#include <WiFi.h>
+#include <Wire.h>
+#include <VL53L0X.h>
 
 #define Servo1_Pin 9
 #define Servo2_Pin 10
 #define Servo3_Pin 11
 #define Servo4_Pin 12
+#define Built_IN_LED 25
+
+VL53L0X tof;
+float distance, prev_distance;
+
+int LED_state;
 
 typedef struct {
   int state, new_state;
@@ -16,7 +25,6 @@ typedef struct {
 } fsm_t;
 
 // Input variables
-
 
 // Output variables
 
@@ -41,15 +49,34 @@ void set_state(fsm_t& fsm, int new_state)
 
 void setup() 
 {
+  pinMode(LED_BUILTIN, OUTPUT);
+  
   servo1.servo.attach(Servo1_Pin, 500,  2500);
   servo2.servo.attach(Servo2_Pin, 500 , 2500);
   servo3.servo.attach(Servo3_Pin, 500 , 2500);
   servo4.servo.attach(Servo4_Pin, 500 , 2500);
   // Start the serial port with 115200 baudrate
-  Serial.begin(115200);
-  angle = -90;
+  Serial.begin(115200); 
+
+  Wire.setSDA(9);
+  Wire.setSCL(8);
+
+  Wire.begin();
+
+  tof.setTimeout(500);
+  while (!tof.init()) {
+    Serial.println(F("Failed to detect and initialize VL53L0X!"));
+    delay(100);
+  }  
+
+  // Reduce timing budget to 20 ms (default is about 33 ms)
+  //tof.setMeasurementTimingBudget(20000);
+
+  // Start new distance measure
+  tof.startReadRangeMillimeters();  
 
   interval = 40;
+  angle = -90;
   set_state(fsm1, 0);
 }
 
@@ -81,13 +108,33 @@ void loop()
 
       // Calculate next state for the first state machine
 
-
       // Update the states
       set_state(fsm1, fsm1.new_state);
 
       // Actions set by the current state of the first state machine
 
       // Set the outputs
+
+
+      //Test tof
+      if (tof.readRangeAvailable()) {
+      prev_distance = distance;
+      distance = tof.readRangeMillimeters() * 1e-3;
+      }
+ 
+      // Start new distance measure
+     tof.startReadRangeMillimeters(); 
+
+      // Toggle builtin LED    
+  
+      Serial.print(" Dist: ");
+      Serial.print(distance, 3);
+      Serial.println();
+      digitalWrite(LED_BUILTIN, HIGH);
+      
+
+      //Testing servos
+      /* 
       servo1.setPosition(-90.00);
       servo2.setPosition(-90.00);
       servo3.setPosition(-90.00);
@@ -103,6 +150,7 @@ void loop()
       servo3.setPosition(90.00);
       servo4.setPosition(90.00);
       delay(500);
+      */
     
       // Debug using the serial port
       /* 

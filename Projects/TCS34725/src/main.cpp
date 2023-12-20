@@ -1,5 +1,5 @@
-// 2023 Bruno Costa
-//  
+// 2022 Paulo Costa
+// RGB sensor TCS34725 and serial commands example
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -11,7 +11,7 @@ unsigned long loop_micros;
 #include "commands.h"
 
 commands_t serial_commands;
-int show_lux=1;
+int show_lux;
 
 /* Initialise with default values (int time = 2.4ms, gain = 1x) */
 //Adafruit_TCS34725 tcs = Adafruit_TCS34725();
@@ -44,19 +44,16 @@ void process_command(char command, float value)
 }
 
 
-void setup()  
+void setup() 
 {
   serial_commands.init(process_command);
 
   // Start the serial port with 115200 baudrate
   Serial.begin(115200);
-  pinMode(25, OUTPUT);
-  digitalWrite(25,HIGH);
                     
                    // Connect TCS34725 Vin to 3.3
-  Wire.setSDA(7);  // Connect TCS34725 SDA to gpio 10
-  Wire.setSCL(8);  // Connect TCS34725 SCL to gpio 11
-  pinMode(25, OUTPUT);
+  Wire.setSDA(8);  // Connect TCS34725 SDA to gpio 8
+  Wire.setSCL(9);  // Connect TCS34725 SCL to gpio 9
 
   Wire.begin();
   
@@ -114,9 +111,8 @@ void loop()
 
       Serial.print(" Command: ");
       Serial.print(serial_commands.command);
-      digitalWrite(25, HIGH);
 
-      Serial.print(" loop: "); 
+      Serial.print(" loop: ");
       Serial.println(micros() - loop_micros);
     }
     

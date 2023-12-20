@@ -1,10 +1,4 @@
-// 2022 Paulo Costa
-// Pico W LED access
-
 #include <Arduino.h>
-#include <WiFi.h>
-
-#include "pico/cyw43_arch.h"
 
 #include <Wire.h>
 #include <VL53L0X.h>
@@ -17,18 +11,25 @@ unsigned long interval;
 unsigned long currentMicros, previousMicros;
 int loop_count;
 
+
+
 void setup() 
 {
   interval = 40 * 1000;
 
   Serial.begin(115200);
 
-  Wire.setSDA(8);
-  Wire.setSCL(9);
+  pinMode(25, OUTPUT);
+  digitalWrite(25, !digitalRead(25));
 
-  Wire.begin();
+  Wire1.setSDA(10);
+  Wire1.setSCL(11);
 
+  Wire1.begin();
+
+  tof.setBus(&Wire1);
   tof.setTimeout(500);
+
   while (!tof.init()) {
     Serial.println(F("Failed to detect and initialize VL53L0X!"));
     delay(100);
@@ -39,11 +40,8 @@ void setup()
 
   // Start new distance measure
   tof.startReadRangeMillimeters();  
-
-  //WiFi.begin
+  
 }
-
-#define CYW43_WL_GPIO_LED_PIN 0
 
 void loop() 
 {
@@ -53,21 +51,15 @@ void loop()
   if (currentMicros - previousMicros >= interval) {
     previousMicros = currentMicros;
 
+    digitalWrite(25, !digitalRead(25));
+
     if (tof.readRangeAvailable()) {
       prev_distance = distance;
       distance = tof.readRangeMillimeters() * 1e-3;
     }
  
     // Start new distance measure
-    tof.startReadRangeMillimeters(); 
-
-    // Toggle builtin LED    
-    loop_count++;
-    if (loop_count > 5) {
-      LED_state = !LED_state;
-      cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, LED_state);
-      loop_count = 0;
-    }
+    tof.startReadRangeMillimeters();    
 
     Serial.print(" Dist: ");
     Serial.print(distance, 3);

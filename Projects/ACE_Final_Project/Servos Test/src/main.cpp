@@ -2,7 +2,7 @@
 #include <ServosInfo.h>
 
 
-#define SERVO1_PIN 9
+#define SERVO1_PIN 7
 
 float i;
 float angle;
@@ -49,20 +49,16 @@ void setup() {
 }
 void loop() {
 
-  servo.servo.writeMicroseconds(2500);
-  delay(1000);
 
-  /* 
-  for (int i = 0; i < 50; i++)
+  
+  for (int i = 0; i < 2000; i++)
   {
-    servo.servo.writeMicroseconds(300 + i);
+    servo.servo.writeMicroseconds(490 + i);
     Serial.println(490 + i);
     delay(100);
-  }*/
+  }
 
 
-  servo.servo.writeMicroseconds(500);
-  delay(1000);
   
   
 }

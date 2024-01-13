@@ -1,65 +1,78 @@
 #include <Servo.h>
 #include <ServosInfo.h>
 
+unsigned long interval ;
+unsigned long currentMicros, previousMicros;
+int loop_count;
+int angle ;
 
-#define SERVO1_PIN 7
+// Pins 
+#define LED 25
+#define SERVO1_PIN 4
+#define SERVO2_PIN 5
+#define SERVO3_PIN 6
+#define SERVO4_PIN 7
 
-float i;
-float angle;
+// Init angles
+#define SERVO1_INIT 30
+#define SERVO2_INIT 90
+#define SERVO3_INIT 0
+#define SERVO4_INIT 10
 
-void calibrateServo(ServoInfo servo){
-  i = 0;
-  angle = -90;
+  void getAngleCMD(){
 
-  delay(2500);
+      uint8_t b;
+  if (Serial.available() > 0) {
+    b = Serial.read();
 
-  for (int k = 0; k < TIME_MAX; k++)
-  {
-    servo.servo.writeMicroseconds(490 + i);  
-    
-    servo.time[k] = 500 + i;
-    servo.angle[k] = angle;
-    angle = map(500 + i, 500, 2500, -90 , 90);
-    i+=TIME_STEP;
-    delay(100);
+    if (b == '-') {
+      angle -= 10;
+    } else if (b == '+') {
+      angle += 10;
+    } 
+
+    if (angle >= 180) angle = 180;
+    else if (angle <= 0) angle = 0;
+
   }
-
-  for (int i = 0; i < TIME_MAX; i++)
-  {
-    Serial.print(servo.time[i]);
-    Serial.print(", ");
-    Serial.println(servo.angle[i]);
-  }
-
-  Serial.println();
-
-  for (int i = 0; i < TIME_MAX; i++)
-  {
-    Serial.print(servo.angle[i]);
-    Serial.print(", ");
-  }
-
 }
+
 
 void setup() {
   Serial.begin(9600);
-  servo.servo.attach(SERVO1_PIN, 500, 2500);  // Attach the servo to pin 9 
+  pinMode(LED, OUTPUT);
 
-  //calibrateServo(servo);
+  //s1.servo.attach(SERVO1_PIN, 500, 2500);
+  //s2.servo.attach(SERVO2_PIN, 500, 2500);
+  //s3.servo.attach(SERVO3_PIN, 500, 2500);
+  s4.servo.attach(SERVO4_PIN, 500, 2500);
+
+  // Set init positions
+  //s1.servo.writeMicroseconds(s1.getPWM(SERVO1_INIT));
+  //s2.servo.writeMicroseconds(s1.getPWM(SERVO2_INIT));
+  angle = SERVO4_INIT;
+  //s3.servo.writeMicroseconds(s1.getPWM(SERVO3_INIT));
+  s4.servo.writeMicroseconds(s4.getPWM(SERVO4_INIT));
+
+  // PCT can be edit here in microseconds
+  interval = 40 * 1000;
+
 }
+
 void loop() {
+  currentMicros = micros();
 
+  getAngleCMD();
 
-  
-  for (int i = 0; i < 2000; i++)
-  {
-    servo.servo.writeMicroseconds(490 + i);
-    Serial.println(490 + i);
-    delay(100);
+  // THE Control Loop
+  if (currentMicros - previousMicros >= interval) {
+    previousMicros = currentMicros;
+
+    //s3.servo.writeMicroseconds(s3.getPWM(angle));
+    s4.servo.writeMicroseconds(s4.getPWM(angle));
+    Serial.println("  Servo angle: " + String(angle));  // Debug output
+    digitalWrite(LED, !digitalRead(LED));
   }
-
-
-  
-  
 }
+
 

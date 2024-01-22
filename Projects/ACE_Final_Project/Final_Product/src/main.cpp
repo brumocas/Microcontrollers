@@ -5,10 +5,12 @@
 #include <VL53L0X.h>
 #include <WiFi.h>
 #include <ServosInfo.h>
+#include <cmath>
+
 
 /*------------------------------------------------Wifi------------------------------------------*/
-const char* ssid = "Escritório/Office";
-const char* password = "EEDAB1237C";
+const char* ssid = "bruninho";
+const char* password = "123bruni";
 
 WiFiServer server(80);
 
@@ -50,6 +52,7 @@ fsm_t fsm1, fsm2;
 
 /*------------------------------------------------Mode Control-------------------------------------------*/
 enum Mode {
+    HOLD,
     MODE1,
     MODE2,
     MODE3,
@@ -68,12 +71,12 @@ String modeToString(Mode mode) {
       return "Mode 3";
     case MODE4:
       return "Mode 4";
+    case HOLD:
+      return "HOLD";
     default:
       return "Unknown Mode";
   }
 }
-
-
 
 
 /*---------------------------------------Color Sensor-------------------------------------------*/
@@ -145,7 +148,13 @@ void tofGetValue(){
 
 
 /*----------------------------------------------Servos-------------------------------------------*/
-int angle1, angle2, angle3, angle4;
+float angle1 = 0, angle2 = 0, angle3 = 0, angle4 = 0;
+float anglejoint1_deg = 0;
+float anglejoint2_deg = 0;
+
+float X = 0;
+float Y = 7;
+float Z = 8;
 
 enum Angle{
  Servo1,
@@ -156,7 +165,6 @@ enum Angle{
 Angle state;
 
 
-
 // Pins 
 #define LED 25
 #define SERVO1_PIN 4
@@ -165,16 +173,13 @@ Angle state;
 #define SERVO4_PIN 7
 
 // Define measures
-#define l1 8.3
-#define l2 8
-#define d2 5.5
+#define L 8.00
 
 // Init angles
 #define SERVO1_INIT 30
 #define SERVO2_INIT 90
 #define SERVO3_INIT 120
 #define SERVO4_INIT 180
-
 
 
   void changeAngle(Angle state, int sum){{
@@ -204,8 +209,39 @@ Angle state;
 
   }
 
-  // Go to position
+  // Go to x,y,z given position
+  void goToPos(float x, float y, float z){
+  
+  // Check the required position is valid
 
+  /*
+  if ( y^2 + z^2 > (2*L)^2 ){
+    return;
+  }
+  */
+  
+  /*
+  float o2 = -2 * std::atan(std::sqrt( ((2 * L) * (2 * L) / (y * y + z * z)) - 1));
+  float o1 = std::atan2(z, y) - std::atan2(L * std::sin(o2), L * (1 + std::cos(o2))) - M_PI / 2;
+
+  o1 = o1 * 180 / M_PI;
+  o2 = o2 * 180 / M_PI;
+
+  Serial.print(" o1:"  +  String(o1));
+  Serial.print(" o2:"  +  String(o2));
+
+
+  anglejoint1_deg = 90 - o1;
+  anglejoint2_deg = o2 + 270;
+
+  angle3 = anglejoint1_deg;
+  angle4 = anglejoint2_deg;
+  */
+
+  }
+
+
+  // For CMD angle remote control
   void getAngleCMD(){
 
       uint8_t b;
@@ -235,7 +271,7 @@ Angle state;
 
 
 
-                         
+
 void setup() 
 { 
   // PCT can be edit here in microseconds
@@ -256,9 +292,9 @@ void setup()
   // Set init positions
   s1.servo.writeMicroseconds(s1.getPWM(SERVO1_INIT));
   angle1 = SERVO1_INIT;
-  s2.servo.writeMicroseconds(s1.getPWM(SERVO2_INIT));
+  s2.servo.writeMicroseconds(s3.getPWM(SERVO2_INIT));
   angle2 = SERVO2_INIT;
-  s3.servo.writeMicroseconds(s1.getPWM(SERVO3_INIT));
+  s3.servo.writeMicroseconds(s2.getPWM(SERVO3_INIT));
   angle3 = SERVO3_INIT;
   s4.servo.writeMicroseconds(s4.getPWM(SERVO4_INIT));
   angle4 = SERVO4_INIT;
@@ -267,6 +303,7 @@ void setup()
   state = Servo1;
 
 
+  /*
   // Connect TCS34725 Vin to 3.3
   Wire.setSDA(8);  // Connect TCS34725 SDA to gpio 10
   Wire.setSCL(9);  // Connect TCS34725 SCL to gpio 11
@@ -282,7 +319,7 @@ void setup()
   Wire1.setSDA(10);
   Wire1.setSCL(11);
   Wire1.begin();
-
+  
   tof.setBus(&Wire1);
   tof.setTimeout(500);
 
@@ -297,6 +334,7 @@ void setup()
 
   // Start new distance measure
   tof.startReadRangeMillimeters();  
+  */
 
 
   // Connect wifi
@@ -318,15 +356,16 @@ void setup()
   set_state(fsm2, 0);
 }
 
-void loop() 
+void loop()   
 { 
 
   // Check if there is a new client connection
   getClientInfo();
   
+  // Get current time
   currentMicros = micros();
 
-  // THE Control Loop
+  // The Control Loop
   if (currentMicros - previousMicros >= interval) {
     previousMicros = currentMicros;
 
@@ -338,19 +377,24 @@ void loop()
     // Read inputs 
     getAngleCMD();
 
+    /*
     // Read tof distance and pre_distance values
     tofGetValue();
+
     // Read color sensor values
     color = getColorValue();
+    
+    */
     /* 
     colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
     if (show_lux) lux = tcs.calculateLux(r, g, b);
     */
-    
 
-
+  
 
     // FSM processing
+
+
 
     // fsm1, LED state machine
     if(fsm1.state == 0 && fsm1.tis >= 500){
@@ -360,8 +404,7 @@ void loop()
     }
 
 
-    //fsm2, MODE state machine
-
+    // fsm2 
 
 
 
@@ -375,32 +418,51 @@ void loop()
 
     // Update the states
     set_state(fsm1, fsm1.new_state);
-
+  
 
     // Outputs
-    //digitalWrite(25, !digitalRead(25));
-
     if (fsm1.state == 0){
       digitalWrite(LED_BUILTIN, HIGH);
     } else if (fsm1.state == 1){
       digitalWrite(LED_BUILTIN, LOW);
     }
 
+    
+    if (mode == MODE1)
+    {
+      s1.servo.writeMicroseconds(s1.getPWM(angle1));
+      s2.servo.writeMicroseconds(s2.getPWM(angle2));
+      s3.servo.writeMicroseconds(s3.getPWM(angle3));
+      s4.servo.writeMicroseconds(s4.getPWM(angle4));
+    }
 
-  
-    s1.servo.writeMicroseconds(s1.getPWM(angle1));
-    s2.servo.writeMicroseconds(s2.getPWM(angle2));
-    s3.servo.writeMicroseconds(s3.getPWM(angle3));
-    s4.servo.writeMicroseconds(s4.getPWM(angle4));
+    
+    if (mode == MODE2)
+    {
+      //goToPos(X , 8, 7);
+      s1.servo.writeMicroseconds(s1.getPWM(SERVO1_INIT));
+      s2.servo.writeMicroseconds(s2.getPWM(SERVO2_INIT));
+      s3.servo.writeMicroseconds(s3.getPWM(SERVO3_INIT));
+      s4.servo.writeMicroseconds(s4.getPWM(SERVO4_INIT));
+    }
 
+    if (mode == MODE3)
+    {
+      //goToPos(X , 8, 6);  
+    }
 
+    
+    if (mode == MODE4)
+    {
+      //goToPos(X , 8, 0);  
+    }
+    
 
-
-
-
-
-
-
+    
+    //s1.servo.writeMicroseconds(s1.getPWM(angle1));
+    //s2.servo.writeMicroseconds(s2.getPWM(angle2));
+    //s3.servo.writeMicroseconds(s3.getPWM(angle3));
+    //s4.servo.writeMicroseconds(s4.getPWM(angle4));
 
 
     // Prints for debug
@@ -425,10 +487,16 @@ void loop()
     Serial.print(fsm1.state);
     Serial.print("  ");
 
-    Serial.print(" Servo angle1: " + String(angle1));
-    Serial.print(" Servo angle2: " + String(angle2));
-    Serial.print(" Servo angle3: " + String(angle3));
-    Serial.print(" Servo angle4: " + String(angle4));
+    Serial.print(" Angle1: " + String(angle1));
+    Serial.print(" Angle2: " + String(angle2));
+    Serial.print(" Angle3: " + String(angle3));
+    Serial.print(" Angle4: " + String(angle4));
+
+    /*
+    Serial.print(" X: " + String(X));
+    Serial.print(" Y: " + String(Y));
+    Serial.print(" Z: " + String(Z));
+    */
 
     /* 
     Serial.print(" Fsm1.tis: ");
@@ -448,7 +516,6 @@ void loop()
     Serial.println();
   }
 }
-
 
 
 // Function to get client connections with new information
@@ -530,7 +597,70 @@ void getClientInfo(){
             } else {
               client.println("<p><a href=\"/Mode4\"><button class=\"button button2\">Mode 4</button></a></p>");
             }
-            
+
+
+
+            if (header.indexOf("GET /number1?value=") >= 0) {
+              // Update number value for angle1
+              angle1 = header.substring(header.indexOf("/number1?value=") + 15, header.indexOf(" ", header.indexOf("/number1?value="))).toInt();
+            }
+
+            if (header.indexOf("GET /number2?value=") >= 0) {
+              // Update number value for angle2
+              angle2 = header.substring(header.indexOf("/number2?value=") + 15, header.indexOf(" ", header.indexOf("/number2?value="))).toInt();
+            }
+
+            if (header.indexOf("GET /number3?value=") >= 0) {
+              // Update number value for angle3
+              angle3 = header.substring(header.indexOf("/number3?value=") + 15, header.indexOf(" ", header.indexOf("/number3?value="))).toInt();
+            }
+
+            if (header.indexOf("GET /number4?value=") >= 0) {
+              // Update number value for angle4
+              angle4 = header.substring(header.indexOf("/number4?value=") + 15, header.indexOf(" ", header.indexOf("/number4?value="))).toInt();
+            }
+
+            // Web mode state for angle1
+            client.println("<p>Current Angle1 value is " + String(angle1) + "</p>");
+            client.println("<p><input type=\"number\" min=\"0\" max=\"180\" value=\"" + String(angle1) + "\" id=\"myNumber1\"></p>");
+            client.println("<script>");
+            client.println("var number = document.getElementById('myNumber1');");
+            client.println("number.onchange = function() {");
+            client.println("  window.location.href = '/number1?value=' + this.value;");
+            client.println("}");
+            client.println("</script>");
+
+            // Web mode state for angle2
+            client.println("<p>Current Angle2 value is " + String(angle2) + "</p>");
+            client.println("<p><input type=\"number\" min=\"0\" max=\"180\" value=\"" + String(angle2) + "\" id=\"myNumber2\"></p>");
+            client.println("<script>");
+            client.println("var number = document.getElementById('myNumber2');");
+            client.println("number.onchange = function() {");
+            client.println("  window.location.href = '/number2?value=' + this.value;");
+            client.println("}");
+            client.println("</script>");
+
+            // Web mode state for angle3
+            client.println("<p>Current Angle3 value is " + String(angle3) + "</p>");
+            client.println("<p><input type=\"number\" min=\"0\" max=\"180\" value=\"" + String(angle3) + "\" id=\"myNumber3\"></p>");
+            client.println("<script>");
+            client.println("var number = document.getElementById('myNumber3');");
+            client.println("number.onchange = function() {");
+            client.println("  window.location.href = '/number3?value=' + this.value;");
+            client.println("}");
+            client.println("</script>");
+
+            // Web mode state for angle4
+            client.println("<p>Current Angle4 value is " + String(angle4) + "</p>");
+            client.println("<p><input type=\"number\" min=\"0\" max=\"180\" value=\"" + String(angle4) + "\" id=\"myNumber4\"></p>");
+            client.println("<script>");
+            client.println("var number = document.getElementById('myNumber4');");
+            client.println("number.onchange = function() {");
+            client.println("  window.location.href = '/number4?value=' + this.value;");
+            client.println("}");
+            client.println("</script>");
+
+
             client.println("</body></html>");
             client.println();
             break;

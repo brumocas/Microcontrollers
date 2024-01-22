@@ -69,9 +69,9 @@ Angle state;
     b = Serial.read();
     
     if (b == '-') {
-      changeAngle(state, -10);
+      changeAngle(state, -1);
     } else if (b == '+') {
-      changeAngle(state, 10);
+      changeAngle(state, 1);
     } 
 
     if (b == 'l'){
@@ -138,7 +138,7 @@ void loop() {
     s4.servo.writeMicroseconds(s4.getPWM(angle4));
     
 
-    digitalWrite(25, !digitalRead(25));
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 
     // Debug output
     Serial.println(" Servo angle1: " + String(angle1) + " Servo angle2: " + String(angle2)+ " Servo angle3: " + String(angle3) + " Servo angle4: " + String(angle4));  

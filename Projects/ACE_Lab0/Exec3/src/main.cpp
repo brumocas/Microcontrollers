@@ -18,6 +18,8 @@ typedef struct {
 uint8_t S1, prevS1;
 uint8_t S2, prevS2;
 
+#define L 8
+
 // Output variables
 uint8_t LED_1, LED_2;
 
@@ -38,32 +40,26 @@ void set_state(fsm_t& fsm, int new_state)
   }
 }
 
+float anglejoint1_deg = 0;
+float anglejoint2_deg = 0;
+int angle3 = 0;
+int angle4 = 0;
+
 
 void setup() 
 {
-  pinMode(LED1_pin, OUTPUT);
-  pinMode(LED2_pin, OUTPUT);
-  pinMode(S1_pin, INPUT_PULLUP);
-  pinMode(S2_pin, INPUT_PULLUP);
+
 
   // Start the serial port with 115200 baudrate
   Serial.begin(115200);
 
-  blink_period = 1000 * 1.0/0.33; // In ms
 
   interval = 40;
-  set_state(fsm1, 0);
-  set_state(fsm2, 0);    
 }
 
 void loop() 
 {
-    uint8_t b;
-    if (Serial.available()) {  // Only do this if there is serial data to be read
-      b = Serial.read();       
-      if (b == '-') blink_period = 100 * blink_period / 80;  // Press '-' to decrease the frequency
-      if (b == '+') blink_period = 80 * blink_period / 100;  // Press '+' to increase the frequency
-    }  
+   
     // To measure the time between loop() calls
     unsigned long last_loop_micros = loop_micros; 
     
@@ -74,85 +70,31 @@ void loop()
       loop_micros = micros();
       last_cycle = now;
       
-      // Read the inputs
-      prevS1 = S1;
-      prevS2 = S2;
-      S1 = !digitalRead(S1_pin);
-      S2 = !digitalRead(S2_pin);
 
-      // FSM processing
-
-      // Update tis for all state machines
-      unsigned long cur_time = millis();   // Just one call to millis()
-      fsm1.tis = cur_time - fsm1.tes;
-      fsm2.tis = cur_time - fsm2.tes; 
-
-      // Calculate next state for the first state machine
-      if (fsm1.state == 0 && S1){
-        fsm1.new_state = 1;
-      } else if(fsm1.state == 1 && !S1) {
-        fsm1.new_state = 0;
-      } else if (fsm1.state == 1 && fsm1.tis > blink_period / 2){
-        fsm1.new_state = 2;
-      } else if (fsm1.state == 2 && fsm1.tis > blink_period / 2){
-        fsm1.new_state = 1;
-      } else if (fsm1.state == 2 && !S1){
-        fsm1.new_state = 0;
-      }
-
-      // Calculate next state for the second state machine
-      if (fsm2.state == 0 && S2 && !prevS2){
-        fsm2.new_state = 1;
-      } else if (fsm2.state == 1 && S2 && !prevS2){
-        fsm2.new_state = 0;
-      }
-
-      // Update the states
-      set_state(fsm1, fsm1.new_state);
-      set_state(fsm2, fsm2.new_state);
-
-      // Actions set by the current state of the first state machine
-      if (fsm1.state == 0){
-        LED_1 = 0;
-      } else if (fsm1.state == 1){
-        LED_1 = 1;
-      } else if (fsm1.state == 2){
-        LED_1 = 0;
-      }
-
-      // A more compact way
-      // LED_1 = (fsm1.state == 1);
-      // LED_1 = (state == 1)||(state ==2); // if LED1 must be set in states 1 and 2
+    float y = 8;
+    float z = 7;
       
-      // Actions set by the current state of the second state machine
-      LED_2 = (fsm2.state == 0);
+    
+    float o2 = -2 * std::atan(std::sqrt( ((2 * L) * (2 * L) / (y * y + z * z)) - 1));
+    float o1 = std::atan2(z, y) - std::atan2(L * std::sin(o2), L * (1 + std::cos(o2))) - M_PI / 2;
 
-      // Set the outputs
-      digitalWrite(LED1_pin, LED_1);
-      digitalWrite(LED2_pin, LED_2);
+    o1 = o1 * 180 / M_PI;
+    o2 = o2 * 180 / M_PI;
 
-      // Debug using the serial port
-      Serial.print("S1: ");
-      Serial.print(S1);
+    Serial.print(" o1: "  +  String(o1));
+    Serial.print(" o2: "  +  String(o1));
+    Serial.print(" Angle3: " + String(anglejoint1_deg));
+    Serial.print(" Angle4: " + String(anglejoint2_deg));
 
-      Serial.print(" S2: ");
-      Serial.print(S2);
 
-      Serial.print(" fsm1.state: ");
-      Serial.print(fsm1.state);
+    anglejoint1_deg = 90 - o1;
+    anglejoint2_deg = o2 + 270;
 
-      Serial.print(" LED_1: ");
-      Serial.print(LED_1);
+    angle3 = int( anglejoint1_deg);
+    angle4 = int(anglejoint2_deg);
 
-      Serial.print(" LED_2: ");
-      Serial.print(LED_2);
+    Serial.println();
 
-      Serial.print(" blink: ");
-      Serial.print(blink_period);
-
-      Serial.print(" loop: ");
-      Serial.print(micros() - loop_micros);
-      Serial.println();
     }
     
 }

@@ -398,12 +398,11 @@ void setup()
   Serial.println("Found distance sensor");
 
   // Reduce timing budget to 20 ms (default is about 33 ms)
-  //tof.setMeasurementTimingBudget(20000);
+  tof.setMeasurementTimingBudget(20000);
 
   // Start new distance measure
   tof.startReadRangeMillimeters();  
   
-
 
   // Connect wifi
   WiFi.begin(ssid, password);
@@ -592,19 +591,42 @@ void loop()
     } else if(fsm5.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Start Sweep
       fsm5.new_state = 2;
-    } else if(fsm5.state == 2 && distance <= 15 && distance > prev_distance){
+    } else if(fsm5.state == 2 && distance <= 17 && distance > prev_distance){
       // Measure average distance
-      fsm5.new_state = 3;
-      
-    } else if (fsm5.state == 3 && fsm5.tis >= 2000){
-      // Go to average_distance
+      fsm5.new_state = 3; 
+    } else if (fsm5.state == 3 && fsm5.tis >= 500){
+      // Go to average_distance Pos
       fsm5.new_state = 4;
       angle3_aux = getS3Interpolated(sum_distance/count);
       angle4_aux = getS4Interpolated(sum_distance/count);
-    } else if (fsm5.new_state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      angle1_aux = 0;
+    } else if (fsm5.new_state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && s1.curr_Angle == s1.next_Angle){
       // Grab   
       fsm5.new_state = 5;
       grabLego();
+    } else if (fsm5.state == 5 && s1.curr_Angle == s1.next_Angle){
+      // Up Robot
+      fsm5.new_state = 6;
+      upPos();
+    } else if(fsm5.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && s4.next_Angle){
+      // Rotate TO 180 Pos
+      fsm5.new_state = 7;
+      angle2_aux = 180;
+    } else if(fsm5.state == 7 && s2.curr_Angle == s2.next_Angle){
+      // Open Arm
+      fsm5.new_state = 8;
+      pickPos();
+    } else if(fsm5.state == 8 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Drop Lego
+      fsm5.new_state = 9;
+      dropLego();
+    } else if(fsm5.state == 9 && s1.curr_Angle == s1.next_Angle){
+      // Robot Up
+      fsm5.new_state = 10;
+      upPos();
+    }else if(fsm5.state == 10 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && fsm5.tis >= 1000){
+      // Go to init
+      fsm5.new_state = 0;
     }
 
 
@@ -616,13 +638,12 @@ void loop()
       angle2_aux = SERVO2_INIT;
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
-
     } else if(fsm6.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to column number 1
       fsm6.new_state = 2;
       pickSORT3X3_2(line, column);
     } else if(fsm6.state == 2 && s2.curr_Angle == s2.next_Angle){
-      // 1X1 Pos
+      // x and y Pos
       fsm6.new_state = 3;
       pickSORT3X3_34(line, column);
     } else if(fsm6.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
@@ -693,8 +714,6 @@ void loop()
       }
     }
 
-
-
     // Update the states
     set_state(fsm1, fsm1.new_state);
     set_state(fsm2, fsm2.new_state);
@@ -744,6 +763,8 @@ void loop()
     }
 
     // fsm5 outputs
+    
+    // Sweep area
     if (fsm5.state == 2){
       
       if(clockwise){
@@ -759,6 +780,7 @@ void loop()
       
     }
 
+    // Measure average distance
     if (fsm5.state == 3){
       sum_distance += distance;
       count +=1;
@@ -793,20 +815,24 @@ void loop()
     Serial.print(fsm1.state);
     Serial.print("  ");
 
+    /*
     // Fsm2 state
     Serial.print(" Fsm2: ");
     Serial.print(fsm2.state);
     Serial.print("  ");
+    */
 
     // Fsm3 state
     Serial.print(" Fsm3: ");
     Serial.print(fsm3.state);
     Serial.print("  ");
-
+    
+    /*
     // Fsm4 state
     Serial.print(" Fsm4: ");
     Serial.print(fsm4.state);
     Serial.print("  ");
+    */
 
     // Fsm5 state
     Serial.print(" Fsm5: ");
@@ -833,11 +859,10 @@ void loop()
     Serial.print(distance, 3);
     Serial.print("  ");
 
-    // Average Distance
+    // Average Distance value
     Serial.print(" Ave_Dist: ");
     Serial.print(sum_distance/count, 3);
     Serial.print("  ");
-
 
     /*
     Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");

@@ -343,6 +343,10 @@ int lookupValue(float x, float* tableX, float* tableY, int size) {
   if (x >= 17.00)
     x = 17.00;
 
+  if ( x <= 7.5){
+    x = 7.50;
+  } 
+
   int index = binarySearch(x, tableX, size);
   if (index != -1) {
     return tableY[index];

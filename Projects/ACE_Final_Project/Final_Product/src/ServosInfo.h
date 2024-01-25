@@ -2,16 +2,16 @@
 
 #define TIME_STEP 5
 #define TIME_MAX ((2500 - 500)/TIME_STEP) + 2
-#define STEP 5
+int step = 5;
 
 // Init angles
 #define SERVO1_INIT 30
 #define SERVO2_INIT 90
 #define SERVO3_INIT 50
-#define SERVO4_INIT 100
+#define SERVO4_INIT 140
 
 struct Servo1
-{   
+{  
   Servo servo;
   int curr_Angle = SERVO1_INIT;
   int next_Angle = SERVO1_INIT;
@@ -86,10 +86,10 @@ struct Servo1
     else {
       if(next_Angle < curr_Angle){
         // Angle step movement
-        curr_Angle -= STEP;  
+        curr_Angle -= step;  
       } else{
         // Angle step movement
-        curr_Angle += STEP;  
+        curr_Angle += step;  
       }
     }
   
@@ -185,10 +185,10 @@ struct Servo2
     else {
       if(next_Angle < curr_Angle){
         // Angle step movement
-        curr_Angle -= STEP;  
+        curr_Angle -= step;  
       } else{
         // Angle step movement
-        curr_Angle += STEP;  
+        curr_Angle += step;  
       }
     }
 
@@ -278,10 +278,10 @@ struct Servo3
     else {
       if(next_Angle < curr_Angle){
         // Angle step movement
-        curr_Angle -= STEP;  
+        curr_Angle -= step;  
       } else{
         // Angle step movement
-        curr_Angle += STEP;  
+        curr_Angle += step;  
       }
     }
 
@@ -373,10 +373,10 @@ struct Servo4
     else {
       if(next_Angle < curr_Angle){
         // Angle step movement
-        curr_Angle -= STEP;  
+        curr_Angle -= step;  
       } else{
         // Angle step movement
-        curr_Angle += STEP;  
+        curr_Angle += step;  
       }
     }
 

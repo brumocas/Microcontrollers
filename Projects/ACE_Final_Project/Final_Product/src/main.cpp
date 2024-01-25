@@ -6,6 +6,7 @@
 #include <WiFi.h>
 #include <ServosInfo.h>
 #include <cmath>
+#include <Interpolate.h>
 
 
 /*------------------------------------------------Wifi------------------------------------------*/
@@ -30,6 +31,7 @@ void getClientInfo();
 unsigned long interval;
 unsigned long currentMicros, previousMicros;
 int loop_count;
+bool clockwise = false;
 
 // State machine struct
 typedef struct {
@@ -50,7 +52,7 @@ void set_state(fsm_t& fsm, int new_state)
 }
 
 // Our finite state machines
-fsm_t fsm1, fsm2, fsm3, fsm4;
+fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6;
 
 
 /*------------------------------------------------Mode Control-------------------------------------------*/
@@ -59,7 +61,8 @@ enum Mode {
     REMOTE,
     INITIAL_POS,
     SORT,
-    SORT3X3
+    SORT3X3_GRID,
+    DISTANCE
 };
 Mode mode;
 
@@ -72,10 +75,12 @@ String modeToString(Mode mode) {
       return "Init";
     case SORT:
       return "Sort";
-    case SORT3X3:
-      return "Sort3X3";
     case HOLD:
       return "Hold";
+    case DISTANCE:
+      return "Distance";
+    case SORT3X3_GRID:
+      return "Sort3X3_GRID";
     default:
       return "Unknown Mode";
   }
@@ -178,12 +183,15 @@ Color getColorValue() {
 /*---------------------------------------Time of Flight-------------------------------------------*/
 VL53L0X tof;
 // Distance in cm
-float distance, prev_distance;
+float distance, prev_distance, sum_distance = 0;
+int count = 0;
 
-// Get tof distance and prev_distance value in millimeters
+
+// Get tof distance and prev_distance value in cm
 void tofGetValue(){
     if (tof.readRangeAvailable()) {
       prev_distance = distance;
+
       distance = tof.readRangeMillimeters() * 1e-1;
     }
 
@@ -195,6 +203,9 @@ void tofGetValue(){
 /*----------------------------------------------Servos-------------------------------------------*/
 // Servos aux angles used
 int angle1_aux = SERVO1_INIT, angle2_aux = SERVO2_INIT, angle3_aux = SERVO3_INIT, angle4_aux = SERVO4_INIT;
+int line = 1, column = 1;
+float sort_distance;
+int sort_angle;
 
 // Pins 
 #define LED 25
@@ -203,9 +214,25 @@ int angle1_aux = SERVO1_INIT, angle2_aux = SERVO2_INIT, angle3_aux = SERVO3_INIT
 #define SERVO3_PIN 6
 #define SERVO4_PIN 7
 
-// Pick lego 
-void pickLegoPos(){
-  angle3_aux = 140;
+// Pick SORT 
+void pickPosSORT(float distance){
+
+    if (distance >= 7.5 && distance <= 17.5){
+    angle3_aux = getS3Interpolated(distance);
+    angle4_aux = getS4Interpolated(distance);
+  } 
+}
+
+// Rotate SORT 
+void rotatePosSORT(int angle){
+  angle2_aux = angle;
+
+}
+
+// Lego Default position
+void pickPos(){
+
+  angle3_aux = 145;
   angle4_aux = 119;
 }
 
@@ -216,7 +243,7 @@ void grabLego(){
 
 // Drop Lego
 void dropLego(){
-  angle1_aux = 30;
+  angle1_aux = 45;
 }
 
 // Robot up
@@ -225,80 +252,104 @@ void upPos(){
   angle4_aux = 119;
 }
 
-// Rotate sense
+// Rotate sense Pos
 void rotateSensePos(){
-  angle2_aux = 14;
+  angle2_aux = 30;
 }
 
 // Color sensing 
-void senseLegoPos(){
-  angle3_aux = 70;
+void sensePos(){
+  angle3_aux = 80;
   angle4_aux = 60;
 }
 
 // Rotate center
-void rotateCenter(){
+void rotateCenterPos(){
   angle2_aux = 90;
 }
 
 // Go to GREEN position
 void rotateGreenPos(){
-  angle2_aux = 110;
+  angle2_aux = 170;
 }
 
 // Go to RED position
 void rotateRedPos(){
-  angle2_aux = 130;
+  angle2_aux = 180;
 }
 
 // Go to BLUE position
 void rotateBluePos(){
-  angle2_aux = 70;
+  angle2_aux = 160;
 }
 
 // Go to red position
 void rotateYellowPos(){
-  angle2_aux = 50;
+  angle2_aux = 150;
 }
 
-// PicK Grid line from column
-void pickSORT3X3_L(int x){
 
-  if(x == 1){
-    // Pos 1xY
-    angle3_aux = 90;
-    angle4_aux = 40;
-  } else if(x == 2){
-    // Pos 2xY
-    angle3_aux = 105;
-    angle4_aux = 80;
-  } else if(x == 3){
-    // Pos 3xY
-    angle3_aux = 145;
-    angle4_aux = 140;
-  }  
+// Pick SORT3X3_GRID angle 2
+void pickSORT3X3_2(int x, int y){
 
-}
-
-// Pick Column from grid
-void pickSORT3X3_C(int y){
-
-  if (y == 1){
-    // Column 1
-    angle2_aux = 120;
-  } else if(y == 2){
-    // Column 2
+  if(x == 1 && y == 1){
+    angle2_aux = 110;
+  } else if(x == 2 && y == 1){
+    angle2_aux = 107;
+  } else if(x == 3 && y == 1){
+    angle2_aux = 105;
+  } else if(x == 1 && y == 2){
     angle2_aux = 90;
-  } else if( y == 3){
-    // Column 3
-    angle3_aux == 60;
+  } else if(x == 2 && y == 2){
+    angle2_aux = 90;
+  } else if(x == 3 && y == 2){
+    angle2_aux = 90;
+  } else if(x == 1 && y == 3){
+    angle2_aux = 75;
+  } else if(x == 2 && y == 3){
+    angle2_aux = 78;
+  } else if(x == 3 && y == 3){
+    angle2_aux = 78;
   }
+} 
 
-}
+// Pick SORT3X3_GRID angle3 and angle4
+void pickSORT3X3_34(int x, int y){
+
+  if(x == 1 && y == 1){
+    angle3_aux = 100;
+    angle4_aux = 40;
+  } else if(x == 2 && y == 1){
+    angle3_aux = 119;
+    angle4_aux = 76;
+  } else if(x == 3 && y == 1){
+    angle3_aux = 135;
+    angle4_aux = 114;
+  } else if(x == 1 && y == 2){
+    angle3_aux = 103;
+    angle4_aux = 40;
+  } else if(x == 2 && y == 2){
+    angle3_aux = 114;
+    angle4_aux = 71;
+  } else if(x == 3 && y == 2){
+    angle3_aux = 145;
+    angle4_aux = 123;
+  } else if(x == 1 && y == 3){
+    angle3_aux = 100;
+    angle4_aux = 40;
+  } else if(x == 2 && y == 3){
+    angle3_aux = 115;
+    angle4_aux = 85;
+  } else if(x == 3 && y == 3){
+    angle3_aux = 140;
+    angle4_aux = 112;
+  }
+} 
 
 
 void setup() 
 { 
+    
   // PCT can be edit here in microseconds
   interval = 40 * 1000;
 
@@ -322,8 +373,8 @@ void setup()
 
   
   // Connect TCS34725 Vin to 3.3
-  Wire.setSDA(8);  // Connect TCS34725 SDA to gpio 10
-  Wire.setSCL(9);  // Connect TCS34725 SCL to gpio 11
+  Wire.setSDA(8);  
+  Wire.setSCL(9);  
   Wire.begin();
 
   while (!tcs.begin()) {
@@ -331,7 +382,7 @@ void setup()
     delay(500);
   }
 
-  /*
+  
   // Connect Tof to 3.3 V
   Wire1.setSDA(10);
   Wire1.setSCL(11);
@@ -351,7 +402,7 @@ void setup()
 
   // Start new distance measure
   tof.startReadRangeMillimeters();  
-  */
+  
 
 
   // Connect wifi
@@ -367,12 +418,20 @@ void setup()
   Serial.println(WiFi.localIP());
   server.begin();
 
+  // Set starting mdoe
+  mode = HOLD;
+
+  // Starting SORT Position
+  sort_distance = 16.75;
+  sort_angle = 90;
 
   // Init fsms
   set_state(fsm1, 0);
   set_state(fsm2, 0);
   set_state(fsm3, 0);
   set_state(fsm4, 0);
+  set_state(fsm5, 0);
+  set_state(fsm6, 0);
 }
 
 void loop()   
@@ -394,19 +453,18 @@ void loop()
     fsm2.tis = cur_time - fsm2.tes;
     fsm3.tis = cur_time - fsm3.tes;
     fsm4.tis = cur_time - fsm4.tes;
+    fsm5.tis = cur_time - fsm5.tes;
+    fsm6.tis = cur_time - fsm6.tes;
     
     
-    
+
     // Read inputs 
 
     // Read color sensor values
     color = getColorValue();
 
-    /*
     // Read tof distance and pre_distance values
     tofGetValue();    
-    */
-
     /* 
     colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
     if (show_lux) lux = tcs.calculateLux(r, g, b);
@@ -421,9 +479,34 @@ void loop()
       fsm1.new_state = 0;
     }
 
-    // fsm2, (bugged!!!)
-    if(fsm2.state == 0 ){
-      fsm2.new_state = 1;
+    // Control State Machine
+    if(mode == REMOTE || mode == INITIAL_POS){
+      fsm3.new_state = 0;
+      fsm4.new_state = 0;
+      fsm5.new_state = 0;
+      fsm6.new_state = 0;
+      line = 1;
+      column = 1;
+    }
+
+    if(mode == SORT){
+      fsm4.new_state = 0;
+      fsm5.new_state = 0;
+      fsm6.new_state = 0;
+      line = 1;
+      column = 1;
+    }
+
+    if(mode == DISTANCE){
+      fsm3.new_state = 0;
+      fsm4.new_state = 0;
+      fsm6.new_state = 0;
+    }
+
+    if(mode == SORT3X3_GRID){
+      fsm3.new_state = 0;
+      fsm4.new_state = 0;
+      fsm5.new_state = 0;
     }
 
     // fsm3, Sort state machine
@@ -431,13 +514,13 @@ void loop()
       // Go to init Pos
       fsm3.new_state = 1;
       angle1_aux = SERVO1_INIT;
-      angle2_aux = SERVO2_INIT;
+      rotatePosSORT(sort_angle);
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
-    } else if(fsm3.state == 3 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm3.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to lego positon
       fsm3.new_state = 2;
-      pickLegoPos();
+      pickPosSORT(sort_distance);
     } else if (fsm3.state == 2 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Grab lego
       fsm3.new_state = 3;
@@ -446,14 +529,14 @@ void loop()
       // Up Pos
       fsm3.new_state = 4;
       upPos();
-    } else if (fsm3.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if (fsm3.state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Rotate Lego to sensing color pos
       fsm3.new_state = 5;
       rotateSensePos();
     } else if (fsm3.state == 5 && s2.curr_Angle == s2.next_Angle){
       // Find lego color
       fsm3.new_state = 6;
-      senseLegoPos();
+      sensePos();
     } else if (fsm3.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && fsm3.tis >= 2000){
       // Up Pos
       fsm3.new_state = 7;
@@ -477,10 +560,10 @@ void loop()
     } else if ( (fsm3.state == 8 || fsm3.state == 12 || fsm3.state == 13 || fsm3.state == 14) && s2.curr_Angle == s2.next_Angle){
       // Go to lego drop position
       fsm3.new_state = 9;
-      pickLegoPos();
+      pickPos();
     } else if (fsm3.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Drop lego
-      fsm3.new_state = 10;
+      fsm3.new_state = 10;  
       dropLego();
     } else if (fsm3.state == 10 && s1.curr_Angle == s1.next_Angle && fsm3.tis >= 500){
       // Go to up position
@@ -488,38 +571,128 @@ void loop()
       upPos();
     } else if (fsm3.state == 11 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to center position
-      fsm3.new_state = 12;
-      rotateCenter(); 
-    } else if (fsm3.state == 12 && s2.curr_Angle == s2.next_Angle){
+      fsm3.new_state = 15;
+      rotatePosSORT(sort_angle);
+    } else if (fsm3.state == 15 && s2.curr_Angle == s2.next_Angle){
       // Go to up position
-      fsm3.new_state = 0;
+      fsm3.new_state = 1;
     }
 
-    
-    // fsm4, SORT3X3 state machine
-    if(fsm4.state == 0 && mode == SORT3X3){
+
+    // fsm5, Distance state machine
+    if(fsm5.state == 0 && mode == DISTANCE){
       // Go to init Pos
-      fsm4.new_state = 1;
+      fsm5.new_state = 1;
       angle1_aux = SERVO1_INIT;
       angle2_aux = SERVO2_INIT;
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
-    } else if(fsm4.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
-      // Go to column number 1
-      fsm4.new_state = 2;
-      pickSORT3X3_C(1);
-    } else if(fsm4.state == 2 && s2.curr_Angle == s2.next_Angle){
-      // 1X1 Pos
-      fsm4.new_state = 3;
-      pickSORT3X3_L(1);
-    } else if(fsm4.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
-      // Grab lego
-      fsm4.new_state = 4;
+      count = 0;
+      sum_distance = 0;
+    } else if(fsm5.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Start Sweep
+      fsm5.new_state = 2;
+    } else if(fsm5.state == 2 && distance <= 15 && distance > prev_distance){
+      // Measure average distance
+      fsm5.new_state = 3;
+      
+    } else if (fsm5.state == 3 && fsm5.tis >= 2000){
+      // Go to average_distance
+      fsm5.new_state = 4;
+      angle3_aux = getS3Interpolated(sum_distance/count);
+      angle4_aux = getS4Interpolated(sum_distance/count);
+    } else if (fsm5.new_state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Grab   
+      fsm5.new_state = 5;
       grabLego();
-    } else if(fsm4.state == 4 && s2.curr_Angle == s2.next_Angle){
-      // Continue ....
-      fsm4.new_state == 0;
     }
+
+
+    // fsm6, Sort3X3_GRID state machine
+    if(fsm6.state == 0 && mode == SORT3X3_GRID){
+      // Go to init Pos
+      fsm6.new_state = 1;
+      angle1_aux = SERVO1_INIT;
+      angle2_aux = SERVO2_INIT;
+      angle3_aux = SERVO3_INIT;
+      angle4_aux = SERVO4_INIT;
+
+    } else if(fsm6.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Go to column number 1
+      fsm6.new_state = 2;
+      pickSORT3X3_2(line, column);
+    } else if(fsm6.state == 2 && s2.curr_Angle == s2.next_Angle){
+      // 1X1 Pos
+      fsm6.new_state = 3;
+      pickSORT3X3_34(line, column);
+    } else if(fsm6.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Grab lego
+      fsm6.new_state = 4;
+      grabLego();
+    } else if(fsm6.state == 4 && s1.curr_Angle == s1.next_Angle){
+      // Up Pos
+      fsm6.new_state = 5;
+      upPos();
+    } else if(fsm6.state == 5  && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Rotate sensing pos
+      fsm6.new_state = 6;
+      rotateSensePos();
+    } else if(fsm6.state == 6  && s2.curr_Angle==s2.next_Angle){
+      // Sensing Pos
+      fsm6.new_state = 7;
+      sensePos();
+    } else if(fsm6.state == 7  && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Sensing color
+      fsm6.new_state = 8;
+    } else if(fsm6.state == 8 && fsm6.tis > 2000){
+      // Up Robot
+      fsm6.new_state = 9;
+      upPos();
+    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == RED){
+      // RED
+      fsm6.new_state = 10;
+      rotateRedPos();
+    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == BLUE){
+      // BLUE
+      fsm6.new_state = 11;
+      rotateBluePos();
+    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == GREEN){
+      // GREEN
+      fsm6.new_state = 12;
+      rotateGreenPos();
+    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == YELLOW){
+      // YELLOW
+      fsm6.new_state = 13;
+      rotateYellowPos();
+    } else if ( (fsm6.state == 10 || fsm6.state == 11 || fsm6.state == 12 || fsm6.state == 13 ) && s2.curr_Angle == s2.next_Angle){
+      // Drop Pos
+      fsm6.new_state = 14;
+      pickPos();
+    } else if ( fsm6.state == 14 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Drop lego
+      fsm6.new_state = 15;
+      dropLego();
+    } else if ( fsm6.state == 15 && s1.curr_Angle == s1.next_Angle){
+      // Up Pos
+      fsm6.new_state = 16;
+      upPos();
+    } else if (fsm6.state == 16 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+      // Go to init
+      fsm6.new_state = 0;
+      // Increase line
+      column+=1;
+      // If line ends
+      if(column > 3){
+        column = 1;
+        line+=1;
+      }
+      // If grid ends
+      if(line > 3 ){
+        column = 1;
+        line = 1;
+      }
+    }
+
 
 
     // Update the states
@@ -527,11 +700,13 @@ void loop()
     set_state(fsm2, fsm2.new_state);
     set_state(fsm3, fsm3.new_state);
     set_state(fsm4, fsm4.new_state);
+    set_state(fsm5, fsm5.new_state);
+    set_state(fsm6, fsm6.new_state);
 
 
     // Outputs
 
-    if (mode == REMOTE || mode == SORT || mode == SORT3X3)
+    if (mode == REMOTE || mode == SORT || mode == DISTANCE || mode == SORT3X3_GRID)
     { 
       // State machines change angles 
       s1.next_Angle = angle1_aux;
@@ -555,9 +730,6 @@ void loop()
 
     }
 
-
-
-
     // fsm1 outputs
     if (fsm1.state == 0){
       digitalWrite(LED_BUILTIN, HIGH);
@@ -565,13 +737,33 @@ void loop()
       digitalWrite(LED_BUILTIN, LOW);
     }
 
-    // fsm3 outputs
-    if (fsm3.state == 5)
+    // fsm3 and fsm6 outputs
+    if (fsm3.state == 6 || fsm6.state == 8)
     {
       sensed_color = color;
     }
-  
 
+    // fsm5 outputs
+    if (fsm5.state == 2){
+      
+      if(clockwise){
+        angle2_aux -= 1;
+      } else if(!clockwise){
+        angle2_aux +=1;
+      }
+
+      if (s2.curr_Angle == 50)
+        clockwise = false;
+      else if (s2.curr_Angle == 180 )
+        clockwise = true;
+      
+    }
+
+    if (fsm5.state == 3){
+      sum_distance += distance;
+      count +=1;
+    }
+  
     // Update Servos outputs
     s1.servo.writeMicroseconds(s1.getPWM());
     s2.servo.writeMicroseconds(s2.getPWM());
@@ -579,14 +771,8 @@ void loop()
     s4.servo.writeMicroseconds(s4.getPWM());
 
 
-
     // Prints for debug
     
-    // Distance value
-    Serial.print(" Dist: ");
-    Serial.print(distance, 3);
-    Serial.print("  ");
-
     // Color value
     Serial.print(" Color: ");
     Serial.print(color);
@@ -617,11 +803,41 @@ void loop()
     Serial.print(fsm3.state);
     Serial.print("  ");
 
+    // Fsm4 state
+    Serial.print(" Fsm4: ");
+    Serial.print(fsm4.state);
+    Serial.print("  ");
+
+    // Fsm5 state
+    Serial.print(" Fsm5: ");
+    Serial.print(fsm5.state);
+    Serial.print("  ");
+
+    // Fsm5 state
+    Serial.print(" Fsm6: ");
+    Serial.print(fsm6.state);
+    Serial.print("  ");
+
     // Current angles values
-    Serial.print(" Angle1: " + String(s1.next_Angle));
-    Serial.print(" Angle2: " + String(s2.next_Angle));
-    Serial.print(" Angle3: " + String(s3.curr_Angle));
-    Serial.print(" Angle4: " + String(s4.curr_Angle));
+    Serial.print(" A1: " + String(s1.next_Angle));
+    Serial.print(" A2: " + String(s2.next_Angle));
+    Serial.print(" A3: " + String(s3.curr_Angle));
+    Serial.print(" A4: " + String(s4.curr_Angle));
+
+    // line and column values
+    Serial.print(" l: " + String(line));
+    Serial.print(" c: " + String(column));
+
+    // Distance value
+    Serial.print(" Dist: ");
+    Serial.print(distance, 3);
+    Serial.print("  ");
+
+    // Average Distance
+    Serial.print(" Ave_Dist: ");
+    Serial.print(sum_distance/count, 3);
+    Serial.print("  ");
+
 
     /*
     Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
@@ -635,7 +851,6 @@ void loop()
     Serial.println();
   }
 }
-
 
 // Function to get client connections with new information from webServer
 void getClientInfo(){
@@ -671,9 +886,14 @@ void getClientInfo(){
               mode = SORT;
             }    
 
-            if (header.indexOf("GET /Sort3X3") >= 0) {
-              mode = SORT3X3;
-            }    
+            if (header.indexOf("GET /Distance") >= 0) {
+              mode = DISTANCE;
+            }       
+
+            if (header.indexOf("GET /Sort3X3_GRID") >= 0) {
+              mode = SORT3X3_GRID;
+            }
+
 
             // Set web page style
             client.println("<style>");
@@ -708,17 +928,18 @@ void getClientInfo(){
             // Web mode state
             //client.println("<p>Current Robot mode is " + modeToString(mode) + "</p>");
 
-            // Update Web new values
-            if (mode == REMOTE) {
-              client.println("<p><a href=\"/Remote\"><button class=\"button\">Remote</button></a></p>");
-            } else {
-              client.println("<p><a href=\"/Remote\"><button class=\"button button2\">Remote</button></a></p>");
-            }
 
             if (mode == INITIAL_POS) {
               client.println("<p><a href=\"/Init\"><button class=\"button\">Init</button></a></p>");
             } else {
               client.println("<p><a href=\"/Init\"><button class=\"button button2\">Init</button></a></p>");
+            }
+
+            // Update Web new values
+            if (mode == REMOTE) {
+              client.println("<p><a href=\"/Remote\"><button class=\"button\">Remote</button></a></p>");
+            } else {
+              client.println("<p><a href=\"/Remote\"><button class=\"button button2\">Remote</button></a></p>");
             }
 
             if (mode == SORT) {
@@ -727,10 +948,16 @@ void getClientInfo(){
               client.println("<p><a href=\"/Sort\"><button class=\"button button2\">Sort</button></a></p>");
             }
 
-            if (mode == SORT3X3) {
-              client.println("<p><a href=\"/Sort3X3\"><button class=\"button\">Sort3X3</button></a></p>");
+            if (mode == SORT3X3_GRID) {
+              client.println("<p><a href=\"/Sort3X3_GRID\"><button class=\"button\">Sort3X3_GRID</button></a></p>");
             } else {
-              client.println("<p><a href=\"/Sort3X3\"><button class=\"button button2\">Sort3X3</button></a></p>");
+              client.println("<p><a href=\"/Sort3X3_GRID\"><button class=\"button button2\">Sort3X3_GRID</button></a></p>");
+            }
+
+            if (mode == DISTANCE) {
+              client.println("<p><a href=\"/Distance\"><button class=\"button\">Distance</button></a></p>");
+            } else {
+              client.println("<p><a href=\"/Distance\"><button class=\"button button2\">Distance</button></a></p>");
             }
 
             // Get new angles values
@@ -753,6 +980,63 @@ void getClientInfo(){
               // Update number value for angle4
               angle4_aux = header.substring(header.indexOf("/number4?value=") + 15, header.indexOf(" ", header.indexOf("/number4?value="))).toInt();
             }
+
+            if (header.indexOf("GET /number5?value=") >= 0) {
+              // Update number value for angle4
+              step = header.substring(header.indexOf("/number5?value=") + 15, header.indexOf(" ", header.indexOf("/number5?value="))).toInt();
+              if(step > 10){
+                step = 10;
+              } else if (step <= 0){
+                step = 1;
+              }
+            }
+
+            if (header.indexOf("GET /number6?value=") >= 0) {
+              // Update number value for prev distance
+              sort_distance = header.substring(header.indexOf("/number6?value=") + 15, header.indexOf(" ", header.indexOf("/number6?value="))).toFloat();
+            }
+
+            if (header.indexOf("GET /number7?value=") >= 0) {
+              // Update number value for prev angle
+              sort_angle = header.substring(header.indexOf("/number7?value=") + 15, header.indexOf(" ", header.indexOf("/number7?value="))).toInt();
+            }
+
+            // Show angles if in REMOTE moDE
+            if (mode == INITIAL_POS){
+
+              // Web to change step value
+              client.println("<p>Current step value is " + String(step) + "</p>");
+              client.println("<p><input type=\"number\" min=\"0\" max=\"10\" value=\"" + String(step) + "\" id=\"myNumber5\"></p>");
+              client.println("<script>");
+              client.println("var number = document.getElementById('myNumber5');");
+              client.println("number.onchange = function() {");
+              client.println("  window.location.href = '/number5?value=' + this.value;");
+              client.println("}");
+              client.println("</script>");
+
+              // Web mode state for sort distance
+              client.println("<p>Current SORT distance to base is " + String(sort_distance) + "</p>");
+              client.println("<p><input type=\"number\" min=\"7.5\" max=\"17.5\" value=\"" + String(sort_distance) + "\" id=\"myNumber6\"></p>");
+              client.println("<script>");
+              client.println("var number = document.getElementById('myNumber6');");
+              client.println("number.onchange = function() {");
+              client.println("  window.location.href = '/number6?value=' + this.value;");
+              client.println("}");
+              client.println("</script>");
+
+              
+              // Web mode state for sort angle
+              client.println("<p>Current SORT angle to base is " + String(sort_angle) + "</p>");
+              client.println("<p><input type=\"number\" min=\"0\" max=\"180\" value=\"" + String(sort_angle) + "\" id=\"myNumber7\"></p>");
+              client.println("<script>");
+              client.println("var number = document.getElementById('myNumber7');");
+              client.println("number.onchange = function() {");
+              client.println("  window.location.href = '/number7?value=' + this.value;");
+              client.println("}");
+              client.println("</script>");
+              
+            }
+
 
             // Show angles if in REMOTE moDE
             if (mode == REMOTE){
@@ -801,7 +1085,6 @@ void getClientInfo(){
               client.println("</script>");
 
             }
-
 
             client.println("</body></html>");
             client.println();

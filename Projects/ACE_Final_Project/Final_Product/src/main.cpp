@@ -13,9 +13,6 @@
 const char* ssid = "bruninho";
 const char* password = "123bruni";
 
-//const char* ssid = "Escritório/Office";
-//const char* password = "EEDAB1237C";
-
 WiFiServer server(80);
 
 String header;
@@ -23,7 +20,9 @@ unsigned long currentTime = millis();
 unsigned long previousTime = 0;
 const long timeoutTime = 2000;
 
+
 // Function to get client connections with new information
+// Web Server
 void getClientInfo();
 
 
@@ -52,10 +51,11 @@ void set_state(fsm_t& fsm, int new_state)
 }
 
 // Our finite state machines
-fsm_t fsm1, fsm2, fsm3, fsm4, fsm5, fsm6;
+fsm_t fsm1, fsm2, fsm3, fsm4;
 
 
 /*------------------------------------------------Mode Control-------------------------------------------*/
+// Available Control Modes
 enum Mode {
     HOLD,
     REMOTE,
@@ -185,14 +185,17 @@ VL53L0X tof;
 // Distance in cm
 float distance, prev_distance, sum_distance = 0;
 int count = 0;
-
+// DRIFT in cm
+#define DRIFT 0.65
+// Max distance that sensor can detect objects in cm
+#define DETECT_DISTANCE 16
 
 // Get tof distance and prev_distance value in cm
 void tofGetValue(){
     if (tof.readRangeAvailable()) {
       prev_distance = distance;
 
-      distance = tof.readRangeMillimeters() * 1e-1;
+      distance = tof.readRangeMillimeters() * 1e-1 - DRIFT;
     }
 
     // Start new distance measure
@@ -289,7 +292,7 @@ void rotateYellowPos(){
 }
 
 
-// Pick SORT3X3_GRID angle 2
+// Pick SORT3X3_GRID angle2
 void pickSORT3X3_2(int x, int y){
 
   if(x == 1 && y == 1){
@@ -360,6 +363,7 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  // Attach servos
   s1.servo.attach(SERVO1_PIN, 500, 2500);
   s2.servo.attach(SERVO2_PIN, 500, 2500);
   s3.servo.attach(SERVO3_PIN, 500, 2500);
@@ -403,7 +407,6 @@ void setup()
   // Start new distance measure
   tof.startReadRangeMillimeters();  
   
-
   // Connect wifi
   WiFi.begin(ssid, password);
 
@@ -420,7 +423,7 @@ void setup()
   // Set starting mdoe
   mode = HOLD;
 
-  // Starting SORT Position
+  // Starting SORT Position (can be edited in runtime)
   sort_distance = 16.75;
   sort_angle = 90;
 
@@ -429,8 +432,6 @@ void setup()
   set_state(fsm2, 0);
   set_state(fsm3, 0);
   set_state(fsm4, 0);
-  set_state(fsm5, 0);
-  set_state(fsm6, 0);
 }
 
 void loop()   
@@ -452,8 +453,6 @@ void loop()
     fsm2.tis = cur_time - fsm2.tes;
     fsm3.tis = cur_time - fsm3.tes;
     fsm4.tis = cur_time - fsm4.tes;
-    fsm5.tis = cur_time - fsm5.tes;
-    fsm6.tis = cur_time - fsm6.tes;
     
     
 
@@ -464,10 +463,7 @@ void loop()
 
     // Read tof distance and pre_distance values
     tofGetValue();    
-    /* 
-    colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
-    if (show_lux) lux = tcs.calculateLux(r, g, b);
-    */
+
 
     // FSM processing
 
@@ -480,226 +476,226 @@ void loop()
 
     // Control State Machine
     if(mode == REMOTE || mode == INITIAL_POS){
+      fsm2.new_state = 0;
+      fsm4.new_state = 0;
       fsm3.new_state = 0;
       fsm4.new_state = 0;
-      fsm5.new_state = 0;
-      fsm6.new_state = 0;
       line = 1;
       column = 1;
     }
 
     if(mode == SORT){
       fsm4.new_state = 0;
-      fsm5.new_state = 0;
-      fsm6.new_state = 0;
+      fsm3.new_state = 0;
+      fsm4.new_state = 0;
       line = 1;
       column = 1;
     }
 
     if(mode == DISTANCE){
-      fsm3.new_state = 0;
+      fsm2.new_state = 0;
       fsm4.new_state = 0;
-      fsm6.new_state = 0;
+      fsm4.new_state = 0;
     }
 
     if(mode == SORT3X3_GRID){
-      fsm3.new_state = 0;
+      fsm2.new_state = 0;
       fsm4.new_state = 0;
-      fsm5.new_state = 0;
+      fsm3.new_state = 0;
     }
 
-    // fsm3, Sort state machine
-    if(fsm3.state == 0 && mode == SORT){
+    // fsm2, Sort state machine
+    if(fsm2.state == 0 && mode == SORT){
       // Go to init Pos
-      fsm3.new_state = 1;
+      fsm2.new_state = 1;
       angle1_aux = SERVO1_INIT;
       rotatePosSORT(sort_angle);
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
-    } else if(fsm3.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm2.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to lego positon
-      fsm3.new_state = 2;
+      fsm2.new_state = 2;
       pickPosSORT(sort_distance);
-    } else if (fsm3.state == 2 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if (fsm2.state == 2 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Grab lego
-      fsm3.new_state = 3;
+      fsm2.new_state = 3;
       grabLego();
-    } else if (fsm3.state == 3 && s1.curr_Angle == s1.next_Angle){
+    } else if (fsm2.state == 3 && s1.curr_Angle == s1.next_Angle){
       // Up Pos
-      fsm3.new_state = 4;
+      fsm2.new_state = 4;
       upPos();
-    } else if (fsm3.state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if (fsm2.state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Rotate Lego to sensing color pos
-      fsm3.new_state = 5;
+      fsm2.new_state = 5;
       rotateSensePos();
-    } else if (fsm3.state == 5 && s2.curr_Angle == s2.next_Angle){
+    } else if (fsm2.state == 5 && s2.curr_Angle == s2.next_Angle){
       // Find lego color
-      fsm3.new_state = 6;
+      fsm2.new_state = 6;
       sensePos();
-    } else if (fsm3.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && fsm3.tis >= 2000){
+    } else if (fsm2.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && fsm2.tis >= 2000){
       // Up Pos
-      fsm3.new_state = 7;
+      fsm2.new_state = 7;
       upPos();
-    }else if (fsm3.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == GREEN){
+    }else if (fsm2.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == GREEN){
       // Rotate Green
-      fsm3.new_state = 8;
+      fsm2.new_state = 8;
       rotateGreenPos();
-    } else if (fsm3.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == BLUE){
+    } else if (fsm2.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == BLUE){
       // Rotate Blue
-      fsm3.new_state = 12;
+      fsm2.new_state = 12;
       rotateBluePos();
-    } else if (fsm3.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == RED){
+    } else if (fsm2.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == RED){
       // Rotate Red
-      fsm3.new_state = 13;
+      fsm2.new_state = 13;
       rotateRedPos();
-    } else if (fsm3.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == YELLOW){
+    } else if (fsm2.state == 7 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == YELLOW){
       // Rotate Yellow
-      fsm3.new_state = 14;
+      fsm2.new_state = 14;
       rotateYellowPos();
-    } else if ( (fsm3.state == 8 || fsm3.state == 12 || fsm3.state == 13 || fsm3.state == 14) && s2.curr_Angle == s2.next_Angle){
+    } else if ( (fsm2.state == 8 || fsm2.state == 12 || fsm2.state == 13 || fsm2.state == 14) && s2.curr_Angle == s2.next_Angle){
       // Go to lego drop position
-      fsm3.new_state = 9;
+      fsm2.new_state = 9;
       pickPos();
-    } else if (fsm3.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if (fsm2.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Drop lego
-      fsm3.new_state = 10;  
+      fsm2.new_state = 10;  
       dropLego();
-    } else if (fsm3.state == 10 && s1.curr_Angle == s1.next_Angle && fsm3.tis >= 500){
+    } else if (fsm2.state == 10 && s1.curr_Angle == s1.next_Angle && fsm2.tis >= 500){
       // Go to up position
-      fsm3.new_state = 11;
+      fsm2.new_state = 11;
       upPos();
-    } else if (fsm3.state == 11 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if (fsm2.state == 11 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to center position
-      fsm3.new_state = 15;
+      fsm2.new_state = 15;
       rotatePosSORT(sort_angle);
-    } else if (fsm3.state == 15 && s2.curr_Angle == s2.next_Angle){
+    } else if (fsm2.state == 15 && s2.curr_Angle == s2.next_Angle){
       // Go to up position
-      fsm3.new_state = 1;
+      fsm2.new_state = 1;
     }
 
 
-    // fsm5, Distance state machine
-    if(fsm5.state == 0 && mode == DISTANCE){
+    // fsm3, Distance state machine
+    if(fsm3.state == 0 && mode == DISTANCE){
       // Go to init Pos
-      fsm5.new_state = 1;
+      fsm3.new_state = 1;
       angle1_aux = SERVO1_INIT;
       angle2_aux = SERVO2_INIT;
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
       count = 0;
       sum_distance = 0;
-    } else if(fsm5.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm3.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Start Sweep
-      fsm5.new_state = 2;
-    } else if(fsm5.state == 2 && distance <= 17 && distance > prev_distance){
+      fsm3.new_state = 2;
+    } else if(fsm3.state == 2 && distance <= DETECT_DISTANCE && distance > prev_distance){
       // Measure average distance
-      fsm5.new_state = 3; 
-    } else if (fsm5.state == 3 && fsm5.tis >= 500){
+      fsm3.new_state = 3; 
+    } else if (fsm3.state == 3 && fsm3.tis >= 500){
       // Go to average_distance Pos
-      fsm5.new_state = 4;
+      fsm3.new_state = 4;
       angle3_aux = getS3Interpolated(sum_distance/count);
       angle4_aux = getS4Interpolated(sum_distance/count);
       angle1_aux = 0;
-    } else if (fsm5.new_state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && s1.curr_Angle == s1.next_Angle){
+    } else if (fsm3.new_state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && s1.curr_Angle == s1.next_Angle){
       // Grab   
-      fsm5.new_state = 5;
+      fsm3.new_state = 5;
       grabLego();
-    } else if (fsm5.state == 5 && s1.curr_Angle == s1.next_Angle){
+    } else if (fsm3.state == 5 && s1.curr_Angle == s1.next_Angle){
       // Up Robot
-      fsm5.new_state = 6;
+      fsm3.new_state = 6;
       upPos();
-    } else if(fsm5.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && s4.next_Angle){
+    } else if(fsm3.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && s4.next_Angle){
       // Rotate TO 180 Pos
-      fsm5.new_state = 7;
+      fsm3.new_state = 7;
       angle2_aux = 180;
-    } else if(fsm5.state == 7 && s2.curr_Angle == s2.next_Angle){
+    } else if(fsm3.state == 7 && s2.curr_Angle == s2.next_Angle){
       // Open Arm
-      fsm5.new_state = 8;
+      fsm3.new_state = 8;
       pickPos();
-    } else if(fsm5.state == 8 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm3.state == 8 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Drop Lego
-      fsm5.new_state = 9;
+      fsm3.new_state = 9;
       dropLego();
-    } else if(fsm5.state == 9 && s1.curr_Angle == s1.next_Angle){
+    } else if(fsm3.state == 9 && s1.curr_Angle == s1.next_Angle){
       // Robot Up
-      fsm5.new_state = 10;
+      fsm3.new_state = 10;
       upPos();
-    }else if(fsm5.state == 10 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && fsm5.tis >= 1000){
+    }else if(fsm3.state == 10 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && fsm3.tis >= 1000){
       // Go to init
-      fsm5.new_state = 0;
+      fsm3.new_state = 0;
     }
 
 
-    // fsm6, Sort3X3_GRID state machine
-    if(fsm6.state == 0 && mode == SORT3X3_GRID){
+    // fsm4, Sort3X3_GRID state machine
+    if(fsm4.state == 0 && mode == SORT3X3_GRID){
       // Go to init Pos
-      fsm6.new_state = 1;
+      fsm4.new_state = 1;
       angle1_aux = SERVO1_INIT;
       angle2_aux = SERVO2_INIT;
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
-    } else if(fsm6.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm4.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to column number 1
-      fsm6.new_state = 2;
+      fsm4.new_state = 2;
       pickSORT3X3_2(line, column);
-    } else if(fsm6.state == 2 && s2.curr_Angle == s2.next_Angle){
+    } else if(fsm4.state == 2 && s2.curr_Angle == s2.next_Angle){
       // x and y Pos
-      fsm6.new_state = 3;
+      fsm4.new_state = 3;
       pickSORT3X3_34(line, column);
-    } else if(fsm6.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm4.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Grab lego
-      fsm6.new_state = 4;
+      fsm4.new_state = 4;
       grabLego();
-    } else if(fsm6.state == 4 && s1.curr_Angle == s1.next_Angle){
+    } else if(fsm4.state == 4 && s1.curr_Angle == s1.next_Angle){
       // Up Pos
-      fsm6.new_state = 5;
+      fsm4.new_state = 5;
       upPos();
-    } else if(fsm6.state == 5  && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm4.state == 5  && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Rotate sensing pos
-      fsm6.new_state = 6;
+      fsm4.new_state = 6;
       rotateSensePos();
-    } else if(fsm6.state == 6  && s2.curr_Angle==s2.next_Angle){
+    } else if(fsm4.state == 6  && s2.curr_Angle==s2.next_Angle){
       // Sensing Pos
-      fsm6.new_state = 7;
+      fsm4.new_state = 7;
       sensePos();
-    } else if(fsm6.state == 7  && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if(fsm4.state == 7  && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Sensing color
-      fsm6.new_state = 8;
-    } else if(fsm6.state == 8 && fsm6.tis > 2000){
+      fsm4.new_state = 8;
+    } else if(fsm4.state == 8 && fsm4.tis > 2000){
       // Up Robot
-      fsm6.new_state = 9;
+      fsm4.new_state = 9;
       upPos();
-    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == RED){
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == RED){
       // RED
-      fsm6.new_state = 10;
+      fsm4.new_state = 10;
       rotateRedPos();
-    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == BLUE){
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == BLUE){
       // BLUE
-      fsm6.new_state = 11;
+      fsm4.new_state = 11;
       rotateBluePos();
-    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == GREEN){
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == GREEN){
       // GREEN
-      fsm6.new_state = 12;
+      fsm4.new_state = 12;
       rotateGreenPos();
-    } else if (fsm6.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == YELLOW){
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == YELLOW){
       // YELLOW
-      fsm6.new_state = 13;
+      fsm4.new_state = 13;
       rotateYellowPos();
-    } else if ( (fsm6.state == 10 || fsm6.state == 11 || fsm6.state == 12 || fsm6.state == 13 ) && s2.curr_Angle == s2.next_Angle){
+    } else if ( (fsm4.state == 10 || fsm4.state == 11 || fsm4.state == 12 || fsm4.state == 13 ) && s2.curr_Angle == s2.next_Angle){
       // Drop Pos
-      fsm6.new_state = 14;
+      fsm4.new_state = 14;
       pickPos();
-    } else if ( fsm6.state == 14 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if ( fsm4.state == 14 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Drop lego
-      fsm6.new_state = 15;
+      fsm4.new_state = 15;
       dropLego();
-    } else if ( fsm6.state == 15 && s1.curr_Angle == s1.next_Angle){
+    } else if ( fsm4.state == 15 && s1.curr_Angle == s1.next_Angle){
       // Up Pos
-      fsm6.new_state = 16;
+      fsm4.new_state = 16;
       upPos();
-    } else if (fsm6.state == 16 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
+    } else if (fsm4.state == 16 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to init
-      fsm6.new_state = 0;
+      fsm4.new_state = 0;
       // Increase line
       column+=1;
       // If line ends
@@ -719,8 +715,6 @@ void loop()
     set_state(fsm2, fsm2.new_state);
     set_state(fsm3, fsm3.new_state);
     set_state(fsm4, fsm4.new_state);
-    set_state(fsm5, fsm5.new_state);
-    set_state(fsm6, fsm6.new_state);
 
 
     // Outputs
@@ -756,16 +750,14 @@ void loop()
       digitalWrite(LED_BUILTIN, LOW);
     }
 
-    // fsm3 and fsm6 outputs
-    if (fsm3.state == 6 || fsm6.state == 8)
+    // fsm2 and fsm4 outputs
+    if (fsm2.state == 6 || fsm4.state == 8)
     {
       sensed_color = color;
     }
 
-    // fsm5 outputs
-    
-    // Sweep area
-    if (fsm5.state == 2){
+    // fsm3 outputs
+    if (fsm3.state == 2){
       
       if(clockwise){
         angle2_aux -= 1;
@@ -775,13 +767,12 @@ void loop()
 
       if (s2.curr_Angle == 50)
         clockwise = false;
-      else if (s2.curr_Angle == 180 )
-        clockwise = true;
-      
+      else if (s2.curr_Angle == 180)
+        clockwise = true;     
     }
 
     // Measure average distance
-    if (fsm5.state == 3){
+    if (fsm3.state == 3){
       sum_distance += distance;
       count +=1;
     }
@@ -815,33 +806,19 @@ void loop()
     Serial.print(fsm1.state);
     Serial.print("  ");
 
-    /*
-    // Fsm2 state
-    Serial.print(" Fsm2: ");
+    // fsm2 state
+    Serial.print(" fsm2: ");
     Serial.print(fsm2.state);
     Serial.print("  ");
-    */
-
-    // Fsm3 state
-    Serial.print(" Fsm3: ");
+    
+    // fsm3 state
+    Serial.print(" fsm3: ");
     Serial.print(fsm3.state);
     Serial.print("  ");
-    
-    /*
-    // Fsm4 state
-    Serial.print(" Fsm4: ");
+
+    // fsm4 state
+    Serial.print(" fsm4: ");
     Serial.print(fsm4.state);
-    Serial.print("  ");
-    */
-
-    // Fsm5 state
-    Serial.print(" Fsm5: ");
-    Serial.print(fsm5.state);
-    Serial.print("  ");
-
-    // Fsm5 state
-    Serial.print(" Fsm6: ");
-    Serial.print(fsm6.state);
     Serial.print("  ");
 
     // Current angles values
@@ -863,15 +840,6 @@ void loop()
     Serial.print(" Ave_Dist: ");
     Serial.print(sum_distance/count, 3);
     Serial.print("  ");
-
-    /*
-    Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
-    if (show_lux) Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
-    Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
-    Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
-    Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
-    Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
-    */
 
     Serial.println();
   }
@@ -1063,7 +1031,7 @@ void getClientInfo(){
             }
 
 
-            // Show angles if in REMOTE moDE
+            // Show angles if in REMOTE mode
             if (mode == REMOTE){
 
               // Web mode state for angle1

@@ -115,9 +115,12 @@ Servo1 s1;
 struct Servo2
 {   
   Servo servo;
+  // Current Servo2 angle
   int curr_Angle = SERVO2_INIT;
+  // Desired Servo2 angle
   int next_Angle = SERVO2_INIT;
-    int time[TIME_MAX] =  {
+  // Lookup table with PWM values according to Servo1 desired angle
+  int time[TIME_MAX] =  {
     510,514,519,524,529,534,539,544,549,554,
     559,564,569,574,579,584,589,594,599,604,
     609,614,619,624,629,634,639,644,649,654,
@@ -174,6 +177,7 @@ struct Servo2
   // Smoth transition
   if (next_Angle != curr_Angle)
   { 
+    // Decrease speed when getting closer to the desired angle
     if (std::abs(next_Angle - curr_Angle) <= 10){ 
       if(next_Angle < curr_Angle){
         // Angle step movement
@@ -207,9 +211,11 @@ Servo2 s2;
 
 struct Servo3
 {   
-  Servo servo;
+  // Current Servo3 angle
   int curr_Angle = SERVO3_INIT;
+  // Desired Servo3 angle
   int next_Angle = SERVO3_INIT;
+  // Lookup table with PWM values according to Servo1 desired angle
   int time[TIME_MAX] =  {
     500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
     550, 555, 560, 565, 570, 575, 580, 585, 590, 595,
@@ -267,6 +273,7 @@ struct Servo3
   // Smoth transition
   if (next_Angle != curr_Angle)
   { 
+    // Decrease speed when getting closer to the desired angle
     if (std::abs(next_Angle - curr_Angle) <= 10){ 
       if(next_Angle < curr_Angle){
         // Angle step movement
@@ -301,9 +308,11 @@ Servo3 s3;
 
 struct Servo4
 {   
-  Servo servo;
+  // Current Servo4 angle
   int curr_Angle = SERVO4_INIT;
+  // Desired Servo4 angle
   int next_Angle = SERVO4_INIT;
+  // Decrease speed when getting closer to the desired angle
   int time[TIME_MAX] =  {
     500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
     550, 555, 560, 565, 570, 575, 580, 585, 590, 595,
@@ -348,7 +357,6 @@ struct Servo4
     2500, 2505
     };
 
-  
   // Hash function to get angle corresponding PWM
   int getPWM(){
 
@@ -362,6 +370,7 @@ struct Servo4
   // Smoth transition
   if (next_Angle != curr_Angle)
   { 
+    // Decrease speed when getting closer to the desired angle
     if (std::abs(next_Angle - curr_Angle) <= 10){ 
       if(next_Angle < curr_Angle){
         // Angle step movement
@@ -389,7 +398,6 @@ struct Servo4
   // Hash function to get angle corresponding PWM
   int hash = map(curr_Angle, 0, 180, 0, TIME_MAX - 1);
     return time[hash];
-  
   }
 
 }; 

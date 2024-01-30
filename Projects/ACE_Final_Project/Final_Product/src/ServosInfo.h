@@ -211,6 +211,7 @@ Servo2 s2;
 
 struct Servo3
 {   
+  Servo servo;
   // Current Servo3 angle
   int curr_Angle = SERVO3_INIT;
   // Desired Servo3 angle
@@ -307,7 +308,8 @@ struct Servo3
 Servo3 s3;
 
 struct Servo4
-{   
+{  
+  Servo servo;
   // Current Servo4 angle
   int curr_Angle = SERVO4_INIT;
   // Desired Servo4 angle

@@ -10,8 +10,8 @@
 
 
 /*------------------------------------------------Wifi------------------------------------------*/
-const char* ssid = "bruninho";
-const char* password = "123bruni";
+const char* ssid = "Escritório/Office";
+const char* password = "EEDAB1237C";
 
 WiFiServer server(80);
 
@@ -22,7 +22,7 @@ const long timeoutTime = 2000;
 
 
 // Function to get client connections with new information
-// Web Server
+// Web Server implementation
 void getClientInfo();
 
 
@@ -477,7 +477,6 @@ void loop()
     // Control State Machine
     if(mode == REMOTE || mode == INITIAL_POS){
       fsm2.new_state = 0;
-      fsm4.new_state = 0;
       fsm3.new_state = 0;
       fsm4.new_state = 0;
       line = 1;
@@ -485,7 +484,6 @@ void loop()
     }
 
     if(mode == SORT){
-      fsm4.new_state = 0;
       fsm3.new_state = 0;
       fsm4.new_state = 0;
       line = 1;
@@ -495,12 +493,12 @@ void loop()
     if(mode == DISTANCE){
       fsm2.new_state = 0;
       fsm4.new_state = 0;
-      fsm4.new_state = 0;
+      line = 1;
+      column = 1;
     }
 
     if(mode == SORT3X3_GRID){
       fsm2.new_state = 0;
-      fsm4.new_state = 0;
       fsm3.new_state = 0;
     }
 
@@ -565,11 +563,11 @@ void loop()
       fsm2.new_state = 11;
       upPos();
     } else if (fsm2.state == 11 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
-      // Go to center position
+      // Rotate to Lego Pos
       fsm2.new_state = 15;
       rotatePosSORT(sort_angle);
     } else if (fsm2.state == 15 && s2.curr_Angle == s2.next_Angle){
-      // Go to up position
+      // Go to new Lego position
       fsm2.new_state = 1;
     }
 
@@ -585,7 +583,7 @@ void loop()
       count = 0;
       sum_distance = 0;
     } else if(fsm3.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
-      // Start Sweep
+      // Start Area Sweep
       fsm3.new_state = 2;
     } else if(fsm3.state == 2 && distance <= DETECT_DISTANCE && distance > prev_distance){
       // Measure average distance
@@ -597,19 +595,19 @@ void loop()
       angle4_aux = getS4Interpolated(sum_distance/count);
       angle1_aux = 0;
     } else if (fsm3.new_state == 4 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && s1.curr_Angle == s1.next_Angle){
-      // Grab   
+      // Grab Lego
       fsm3.new_state = 5;
       grabLego();
     } else if (fsm3.state == 5 && s1.curr_Angle == s1.next_Angle){
-      // Up Robot
+      // Robot Up
       fsm3.new_state = 6;
       upPos();
     } else if(fsm3.state == 6 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && s4.next_Angle){
-      // Rotate TO 180 Pos
+      // Rotate to Drop Pos
       fsm3.new_state = 7;
       angle2_aux = 180;
     } else if(fsm3.state == 7 && s2.curr_Angle == s2.next_Angle){
-      // Open Arm
+      // Drop Pos
       fsm3.new_state = 8;
       pickPos();
     } else if(fsm3.state == 8 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
@@ -635,11 +633,11 @@ void loop()
       angle3_aux = SERVO3_INIT;
       angle4_aux = SERVO4_INIT;
     } else if(fsm4.state == 1 && s1.curr_Angle == s1.next_Angle && s2.curr_Angle == s2.next_Angle && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
-      // Go to column number 1
+      // Rotate to line and column pos
       fsm4.new_state = 2;
       pickSORT3X3_2(line, column);
     } else if(fsm4.state == 2 && s2.curr_Angle == s2.next_Angle){
-      // x and y Pos
+      // Go to lego line and column pos
       fsm4.new_state = 3;
       pickSORT3X3_34(line, column);
     } else if(fsm4.state == 3 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
@@ -662,23 +660,23 @@ void loop()
       // Sensing color
       fsm4.new_state = 8;
     } else if(fsm4.state == 8 && fsm4.tis > 2000){
-      // Up Robot
+      // Up Pos
       fsm4.new_state = 9;
       upPos();
     } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == RED){
-      // RED
+      // Rotate RED
       fsm4.new_state = 10;
       rotateRedPos();
-    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == BLUE){
-      // BLUE
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == BLUE){
+      // Rotate BLUE
       fsm4.new_state = 11;
       rotateBluePos();
-    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == GREEN){
-      // GREEN
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == GREEN){
+      // Rotate GREEN
       fsm4.new_state = 12;
       rotateGreenPos();
-    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle && sensed_color == YELLOW){
-      // YELLOW
+    } else if (fsm4.state == 9 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle && sensed_color == YELLOW){
+      // Rotate YELLOW
       fsm4.new_state = 13;
       rotateYellowPos();
     } else if ( (fsm4.state == 10 || fsm4.state == 11 || fsm4.state == 12 || fsm4.state == 13 ) && s2.curr_Angle == s2.next_Angle){
@@ -696,9 +694,9 @@ void loop()
     } else if (fsm4.state == 16 && s3.curr_Angle == s3.next_Angle && s4.curr_Angle == s4.next_Angle){
       // Go to init
       fsm4.new_state = 0;
-      // Increase line
+      // Increase column
       column+=1;
-      // If line ends
+      // If column ends
       if(column > 3){
         column = 1;
         line+=1;
@@ -749,7 +747,7 @@ void loop()
     } else if (fsm1.state == 1){
       digitalWrite(LED_BUILTIN, LOW);
     }
-
+    
     // fsm2 and fsm4 outputs
     if (fsm2.state == 6 || fsm4.state == 8)
     {
@@ -758,13 +756,14 @@ void loop()
 
     // fsm3 outputs
     if (fsm3.state == 2){
-      
+      // Sweep_Area
       if(clockwise){
         angle2_aux -= 1;
       } else if(!clockwise){
         angle2_aux +=1;
       }
 
+      // Change Direction
       if (s2.curr_Angle == 50)
         clockwise = false;
       else if (s2.curr_Angle == 180)

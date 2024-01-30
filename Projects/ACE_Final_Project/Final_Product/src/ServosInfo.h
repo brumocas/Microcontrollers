@@ -13,8 +13,11 @@ int step = 5;
 struct Servo1
 {  
   Servo servo;
+  // Current Servo1 angle
   int curr_Angle = SERVO1_INIT;
+  // Desired Servo1 angle
   int next_Angle = SERVO1_INIT;
+  // Lookup table with PWM values according to Servo1 desired angle
   int time[TIME_MAX] =  {
     500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
     550, 555, 560, 565, 570, 575, 580, 585, 590, 595,
@@ -69,7 +72,6 @@ struct Servo1
     next_Angle = 0;
   }
 
-
   // Smoth transition
   if (next_Angle != curr_Angle)
   { 
@@ -100,10 +102,9 @@ struct Servo1
   
   // Hash function to get angle corresponding PWM
   int hash = map(curr_Angle, 0, 180, 0, TIME_MAX - 1);
-  return time[hash];
+    return time[hash];
   }
   
-
 }; 
 Servo1 s1;
 

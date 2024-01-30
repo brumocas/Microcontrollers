@@ -115,7 +115,7 @@ float d[MAX_VALUE_INTERPOLATED] = {
     17.42,  17.43,  17.44,  17.45,  17.46,  17.47,  17.48,  17.49,
     };
 
-// Servo 3 interpolated values
+// Servo3 angle interpolated values
 float o3[MAX_VALUE_INTERPOLATED] = {
   100.50,  100.57,  
   100.64,  100.71,  100.78,  100.85,  100.92,  100.99,  101.06,  101.13,  101.20,  101.27,  
@@ -215,7 +215,7 @@ float o3[MAX_VALUE_INTERPOLATED] = {
   149.20,  149.30,  149.40,  149.50,  149.60,  149.70,  149.80,  149.90
 };
 
-// Servo 4 interpolated values
+// Servo4 angle interpolated values
 float o4[MAX_VALUE_INTERPOLATED] = {
   42.50,  42.51,  
   42.52,  42.53,  42.54,  42.55,  42.56,  42.57,  42.58,  42.59,  42.60,  42.61,  
@@ -338,11 +338,14 @@ int binarySearch(float x, float* arr, int size) {
 // Function to lookup a value in the table
 int lookupValue(float x, float* tableX, float* tableY, int size) {
   
+  // Distance
   x = roundFloat(x, 2);
   
+  // Max Distance
   if (x >= 17.00)
     x = 17.00;
-
+  
+  // Min Distance
   if ( x <= 7.5){
     x = 7.50;
   } 

@@ -102,6 +102,7 @@ enum Color {
     YELLOW, 
     INVALID
 };
+Color color, sensed_color;
 
 // Structure to store HSV values
 struct HSV {
@@ -109,7 +110,7 @@ struct HSV {
     float s; // Saturation
     float v; // Value
 }; 
-Color color, sensed_color;
+
 
 // Function to convert RGB to HSV
 HSV rgbToHsv(int r, int g, int b) {
@@ -183,8 +184,11 @@ Color getColorValue() {
 /*---------------------------------------Time of Flight-------------------------------------------*/
 VL53L0X tof;
 // Distance in cm
-float distance, prev_distance, sum_distance = 0;
+float distance, prev_distance;
+// Used to calculate the average distance
+float sum_distance = 0;
 int count = 0;
+
 // DRIFT in cm
 #define DRIFT 0.65
 // Max distance that sensor can detect objects in cm

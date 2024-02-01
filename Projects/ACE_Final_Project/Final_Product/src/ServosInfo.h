@@ -119,7 +119,7 @@ struct Servo2
   int curr_Angle = SERVO2_INIT;
   // Desired Servo2 angle
   int next_Angle = SERVO2_INIT;
-  // Lookup table with PWM values according to Servo1 desired angle
+  // Lookup table with PWM values according to Servo2 desired angle
   int time[TIME_MAX] =  {
     510,514,519,524,529,534,539,544,549,554,
     559,564,569,574,579,584,589,594,599,604,
@@ -216,7 +216,7 @@ struct Servo3
   int curr_Angle = SERVO3_INIT;
   // Desired Servo3 angle
   int next_Angle = SERVO3_INIT;
-  // Lookup table with PWM values according to Servo1 desired angle
+  // Lookup table with PWM values according to Servo3 desired angle
   int time[TIME_MAX] =  {
     500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
     550, 555, 560, 565, 570, 575, 580, 585, 590, 595,
@@ -314,7 +314,7 @@ struct Servo4
   int curr_Angle = SERVO4_INIT;
   // Desired Servo4 angle
   int next_Angle = SERVO4_INIT;
-  // Decrease speed when getting closer to the desired angle
+  // Lookup table with PWM values according to Servo4 desired angle
   int time[TIME_MAX] =  {
     500, 505, 510, 515, 520, 525, 530, 535, 540, 545,
     550, 555, 560, 565, 570, 575, 580, 585, 590, 595,

@@ -10,8 +10,8 @@
 
 
 /*------------------------------------------------Wifi------------------------------------------*/
-const char* ssid = "Escritório/Office";
-const char* password = "EEDAB1237C";
+const char* ssid = "YOUR SSID";
+const char* password = "YOUR PASSWORD";
 
 WiFiServer server(80);
 
@@ -721,6 +721,7 @@ void loop()
 
     // Outputs
 
+    // fsm0 outputs
     if (mode == REMOTE || mode == SORT || mode == DISTANCE || mode == SORT3X3_GRID)
     { 
       // State machines change angles 

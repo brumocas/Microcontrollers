@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../../Desktop/AI/microcontrollers"
+		},
+		{
+			"name": "Blink_Esp32",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}

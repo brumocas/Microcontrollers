@@ -25,3 +25,7 @@ Explore a world of microcontroller possibilities through this comprehensive repo
    - **Project Video:** [Watch the project in action](https://www.youtube.com/watch?v=-JX2t_JAwcM&t=68s).
 
 Feel free to explore, contribute, and let these projects spark new ideas and innovations in your microcontroller journey.
+
+## License
+
+This repository is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
